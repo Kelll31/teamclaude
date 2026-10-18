@@ -85,6 +85,8 @@ export const ru: Record<MessageKey, string> = {
   'quota.seenTitle': 'Когда провайдер в последний раз сообщил это значение',
   'quota.used': 'Использовано: {label}',
   'quota.title': 'Квоты',
+  'quota.noReading': 'Сервер ещё не сообщал данных',
+  'quota.windowEnded': 'Окно сброшено — новое начнётся с первым запросом',
   'spark.collecting': 'Собираем данные…',
 
   'reason.available': 'Доступен',

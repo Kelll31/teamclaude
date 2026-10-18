@@ -85,6 +85,8 @@ export const ja: Record<MessageKey, string> = {
   'quota.seenTitle': 'プロバイダーが最後にこの値を報告した時刻',
   'quota.used': '{label} の使用量',
   'quota.title': 'クォータ',
+  'quota.noReading': 'サーバーからのデータはまだありません',
+  'quota.windowEnded': 'ウィンドウ終了 — 次のリクエストで新しく始まります',
   'spark.collecting': 'データを収集しています…',
 
   'reason.available': '利用可能',

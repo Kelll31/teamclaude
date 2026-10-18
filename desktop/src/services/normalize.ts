@@ -76,6 +76,7 @@ function normalizeAccount(raw: unknown, index: number, current: Set<string>): Ac
     sessions: int(a.sessions),
     knownSessions: int(a.knownSessions),
     fiveHour: fiveHour.utilization === null ? backendWindow(quota, 'fiveHour') ?? fiveHour : fiveHour,
+    sessionWindowStated: typeof quota.sessionWindowStated === 'boolean' ? quota.sessionWindowStated : null,
     weekly: weekly.utilization === null ? backendWindow(quota, 'weekly') ?? weekly : weekly,
     modelWindows,
     onExtraUsage: bool(a.onExtraUsage),

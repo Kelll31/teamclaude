@@ -89,6 +89,8 @@ export const en = {
   'quota.seenTitle': 'When upstream last stated this value',
   'quota.used': '{label} used',
   'quota.title': 'Quota',
+  'quota.noReading': 'No reading from the server yet',
+  'quota.windowEnded': 'Window ended — the next request starts a new one',
   'spark.collecting': 'Collecting samples…',
 
   // ── unavailable reasons ──

@@ -30,6 +30,14 @@ describe('normalizeStatus', () => {
     expect(s.sessions.distribution).toBeNull();
   });
 
+  it('passes through whether the plan meters a 5-hour window', () => {
+    const stated = (value: unknown) => normalizeStatus(rawStatus({ accounts: [rawAccount({ quota: { sessionWindowStated: value } })] })).accounts[0]!.sessionWindowStated;
+    expect(stated(true)).toBe(true);
+    expect(stated(false)).toBe(false);
+    expect(stated(undefined)).toBeNull();
+    expect(stated('yes')).toBeNull();
+  });
+
   it('survives garbage of the wrong type', () => {
     const s = normalizeStatus({ accounts: 'nope', server: [1, 2], sessions: null, routes: {} } as Record<string, unknown>);
     expect(s.accounts).toEqual([]);

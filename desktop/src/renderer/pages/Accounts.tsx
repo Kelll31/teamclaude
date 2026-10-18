@@ -3,7 +3,7 @@ import { useState } from 'react';
 import type { AccountView } from '../../shared/types';
 import { call } from '../api';
 import { JobPanel } from '../components/JobPanel';
-import { QuotaBar } from '../components/QuotaBar';
+import { FiveHourBar, QuotaBar } from '../components/QuotaBar';
 import {
   ActionButton, Badge, Button, Card, ConfirmDialog, controlClass, EmptyState, Field, inputClass, PageHeader, Toggle, type Tone,
 } from '../components/ui';
@@ -67,7 +67,7 @@ function AccountCard({ account, threshold, readOnly }: { account: AccountView; t
       </div>
 
       <div className="mt-3 grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-4">
-        <QuotaBar label={t('quota.fiveHour')} window={account.fiveHour} now={now} threshold={threshold} />
+        <FiveHourBar account={account} now={now} threshold={threshold} />
         <QuotaBar label={t('quota.weekly')} window={account.weekly} now={now} threshold={threshold} />
         {account.modelWindows.map(w => <QuotaBar key={w.label} label={t('quota.modelWeekly', { model: w.label })} window={w} now={now} threshold={threshold} />)}
       </div>

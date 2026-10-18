@@ -57,6 +57,13 @@ export interface AccountView {
   sessions: number;
   knownSessions: number;
   fiveHour: QuotaWindow;
+  /**
+   * Whether the last reading that stated a window stated a 5-hour one: false
+   * = the plan meters no session window, null = not reported. The server
+   * clears `fiveHour` when its window ends, so this is what tells "ended,
+   * waiting for the next request" apart from "never existed".
+   */
+  sessionWindowStated: boolean | null;
   weekly: QuotaWindow;
   /** Model-scoped weekly buckets (Sonnet, Fable, …) when the server reports them. */
   modelWindows: NamedQuotaWindow[];
