@@ -118,7 +118,7 @@ export function Toggle({ checked, onChange, label, description, disabled }: {
   disabled?: boolean;
 }) {
   return (
-    <label className={cx('flex items-start justify-between gap-4 py-2', disabled ? 'opacity-50' : 'cursor-pointer')}>
+    <label className={cx('relative flex items-start justify-between gap-4 py-2', disabled ? 'opacity-50' : 'cursor-pointer')}>
       <span className="min-w-0">
         <span className="block text-[13px] text-fg">{label}</span>
         {description && <span className="mt-0.5 block text-[12px] text-muted">{description}</span>}

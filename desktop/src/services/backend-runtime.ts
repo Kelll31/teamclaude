@@ -68,5 +68,8 @@ export function backendSpawnSpec(execPath: string, location: BackendLocation, cl
     NO_COLOR: '1',
     FORCE_COLOR: '0',
   };
-  return { command: execPath, args: [location.entry, ...cliArgs], cwd: location.root, env };
+  // The CLI opens the login URL with `start` through cmd on Windows (fixed
+  // arguments, URL quoted); Node 24 flags every shell spawn with args as
+  // DEP0190, which then shows up in the job output as if it were an error.
+  return { command: execPath, args: ['--disable-warning=DEP0190', location.entry, ...cliArgs], cwd: location.root, env };
 }

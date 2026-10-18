@@ -42,7 +42,7 @@ describe('backend runtime', () => {
   it('runs through Electron as Node with self-update off, without a shell', () => {
     const spec = backendSpawnSpec('/e/electron', { entry: '/b/src/index.js', root: '/b', source: 'bundled' }, ['server', '--headless'], { PATH: '/bin' });
     expect(spec.command).toBe('/e/electron');
-    expect(spec.args).toEqual(['/b/src/index.js', 'server', '--headless']);
+    expect(spec.args).toEqual(['--disable-warning=DEP0190', '/b/src/index.js', 'server', '--headless']);
     expect(spec.env).toMatchObject({ ELECTRON_RUN_AS_NODE: '1', TEAMCLAUDE_DISABLE_AUTOUPDATE: '1', TEAMROUTER_DISABLE_AUTOUPDATE: '1', PATH: '/bin' });
   });
 

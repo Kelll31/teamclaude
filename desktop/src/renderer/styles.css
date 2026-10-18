@@ -59,6 +59,8 @@ body,
 
 body {
   margin: 0;
+  /* <main> is the only scroll container; the window itself never scrolls. */
+  overflow: hidden;
   background: var(--tc-bg);
   color: var(--tc-fg);
   font-family: var(--font-sans);
