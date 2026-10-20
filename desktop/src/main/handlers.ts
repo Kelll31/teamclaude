@@ -2,7 +2,7 @@
 // listed here; arguments have already been validated by main/ipc.ts.
 
 import { spawn } from 'node:child_process';
-import { readFileSync, statSync, writeFileSync, existsSync } from 'node:fs';
+import { writeFileSync, existsSync } from 'node:fs';
 import { arch, platform, release } from 'node:os';
 import { dirname } from 'node:path';
 import { clipboard, dialog, shell, type BrowserWindow } from 'electron';
@@ -12,6 +12,7 @@ import type { BackendManager } from '../services/backend-manager';
 import { crashLogPath } from '../services/backend-config';
 import type { ControlResult } from '../services/backend-client';
 import { buildDiagnosticReport } from '../services/diagnostics';
+import { readFileTail } from '../services/file-tail';
 import { envSnippets, findExecutable, terminalCommand, toolInfo, vscodeSnippet } from '../services/integrations';
 import {
   apiKeyArgs, distributeArgs, importArgs, intervalArgs, loginArgs, removeArgs, renameArgs, type JobRunner,
@@ -30,6 +31,8 @@ const LINKS = {
   license: 'https://github.com/KarpelesLab/teamclaude/blob/master/LICENSE',
 } as const;
 
+const CRASH_LOG_TAIL_BYTES = 64 * 1024;
+
 export interface HandlerContext {
   manager: BackendManager;
   jobs: JobRunner;
@@ -41,13 +44,6 @@ export interface HandlerContext {
   desktopVersion: string;
   bundledBackendVersion: string | null;
   userDataDir: string;
-}
-
-function tailOfFile(path: string, maxBytes: number): string | null {
-  if (!existsSync(path)) return null;
-  const size = statSync(path).size;
-  const text = readFileSync(path, 'utf8');
-  return size > maxBytes ? text.slice(-maxBytes) : text;
 }
 
 export function systemInfo(ctx: HandlerContext): SystemInfo {
@@ -128,7 +124,7 @@ export function createHandlers(ctx: HandlerContext): Handlers {
     'logs.get': () => logs.all(),
     'logs.clear': () => { logs.clear(); return { ok: true, message: t('h.cleared') }; },
     'logs.readCrashLog': () => {
-      const text = tailOfFile(crashLogPath(manager.getState().configPath), 64 * 1024);
+      const text = readFileTail(crashLogPath(manager.getState().configPath), CRASH_LOG_TAIL_BYTES);
       return text === null ? null : sanitizeText(text);
     },
 
