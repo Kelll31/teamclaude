@@ -1,0 +1,56 @@
+name: Desktop
+
+# TeamClaude Desktop (desktop/): lint, typecheck, unit and integration tests.
+# Packaging and end-to-end tests are added with the packaging change. Nothing
+# here publishes anything.
+on:
+  workflow_dispatch:
+  push:
+    branches: [master]
+    paths:
+      - 'desktop/**'
+      - 'src/**'
+      - 'package.json'
+      - '.github/workflows/desktop.yml'
+  pull_request:
+    branches: [master]
+    paths:
+      - 'desktop/**'
+      - 'src/**'
+      - 'package.json'
+      - '.github/workflows/desktop.yml'
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: desktop
+
+jobs:
+  check:
+    name: lint, typecheck, test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+
+      # `--ignore-scripts`: no dependency needs an install script for these
+      # steps (electron-builder fetches Electron itself when packaging), and
+      # not running them denies a compromised package code execution here.
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      # Includes tests/integration: the real backend from ../src with
+      # placeholder accounts and an upstream that never answers.
+      - name: Test
+        run: npm test
