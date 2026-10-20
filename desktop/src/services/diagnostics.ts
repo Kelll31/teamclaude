@@ -1,13 +1,33 @@
 // A diagnostic report a user can attach to an issue. Built only from data the
 // app already holds in sanitized form (normalized status, sanitized log lines)
 // and passed through the redactor once more as a whole. It never includes the
-// config file, request bodies or account credentials.
+// config file, request bodies or account credentials, and it names no
+// account: log lines that do are rewritten to the report's account numbers.
 
 import type { BackendState, LogLine, SystemInfo } from '../shared/types';
 import { sanitizeText } from './sanitize';
 
 function pct(value: number | null): string {
   return value === null ? 'unknown' : `${Math.round(value * 100)}%`;
+}
+
+const EMAIL = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g;
+
+const escapeRegExp = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/**
+ * Account names can be email addresses, and the backend's own log lines name
+ * the account they are about. Known names become the report's `#N`; any other
+ * email address becomes `[email]`.
+ */
+export function anonymizeAccounts(text: string, names: string[]): string {
+  let out = text;
+  const numbered = names.map((name, i) => ({ name, label: `#${i + 1}` })).filter(n => n.name);
+  // Longest first, so one name that contains another is replaced whole.
+  for (const { name, label } of numbered.toSorted((a, b) => b.name.length - a.name.length)) {
+    out = out.replace(new RegExp(`(?<![\\w.@-])${escapeRegExp(name)}(?![\\w.@-])`, 'g'), label);
+  }
+  return out.replace(EMAIL, '[email]');
 }
 
 export function buildDiagnosticReport(system: SystemInfo, state: BackendState, logs: LogLine[], now: Date = new Date()): string {
@@ -44,5 +64,5 @@ export function buildDiagnosticReport(system: SystemInfo, state: BackendState, l
   lines.push('## Recent log (last 200 lines)', '```');
   for (const line of logs.slice(-200)) lines.push(`${new Date(line.at).toISOString()} [${line.stream}] ${line.text}`);
   lines.push('```', '');
-  return sanitizeText(lines.join('\n'));
+  return anonymizeAccounts(sanitizeText(lines.join('\n')), status?.accounts.map(a => a.name) ?? []);
 }
