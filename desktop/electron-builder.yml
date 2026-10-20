@@ -19,6 +19,10 @@ extraResources:
     to: icon.png
 asar: true
 publish: null
+# Chromium's own UI strings (context menus, file dialogs) for the languages the
+# app is translated into; any other system language falls back to en-US.
+# Shipping all 55 locales adds about 48 MB unpacked.
+electronLanguages: [en-US, ru, ja]
 win:
   target:
     - target: nsis
