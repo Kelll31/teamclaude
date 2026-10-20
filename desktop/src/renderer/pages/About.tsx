@@ -1,10 +1,11 @@
-import { ExternalLink, RefreshCw } from 'lucide-react';
+import { Download, ExternalLink, RefreshCw, RotateCw } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import type { SystemInfo, UpdateCheckResult } from '../../shared/types';
+import type { ExternalLink as ExternalLinkTarget } from '../../shared/ipc';
+import type { AppUpdateState, SystemInfo, UpdateCheckResult } from '../../shared/types';
 import { call } from '../api';
 import { ActionButton, Banner, Button, Card, PageHeader } from '../components/ui';
 import { phaseText, unknown } from '../format';
-import { t } from '../i18n';
+import { t, type MessageKey } from '../i18n';
 import { useStore } from '../store';
 
 function Row({ label, value }: { label: string; value: string | null }) {
@@ -16,7 +17,50 @@ function Row({ label, value }: { label: string; value: string | null }) {
   );
 }
 
-type Link = 'repository' | 'issues' | 'docs' | 'releases' | 'license';
+type Link = ExternalLinkTarget;
+
+function appUpdateText(s: AppUpdateState): string {
+  if (s.unsupported) return t(`about.appUnsupported.${s.unsupported}` as MessageKey);
+  const latest = s.latest ?? '';
+  switch (s.phase) {
+    case 'idle': return t('about.appIdle');
+    case 'checking': return t('about.appChecking');
+    case 'up-to-date': return t('about.appUpToDate');
+    case 'available': return t('about.appAvailable', { latest });
+    case 'downloading': return t('about.appDownloading', { latest, progress: s.progress ?? 0 });
+    case 'ready': return t('about.appReady', { latest });
+    case 'error': return t('about.appError', { error: s.error ?? '' });
+  }
+}
+
+/** This app's own updates from the fork's releases. */
+function AppUpdateCard() {
+  const { appUpdate, run } = useStore();
+  if (!appUpdate) return null;
+  const busy = appUpdate.phase === 'checking' || appUpdate.phase === 'downloading';
+  const releases = () => run(() => call('system.openExternal', { target: 'desktopReleases' }));
+  return (
+    <Card title={t('about.appTitle')}>
+      <div className="text-[13px] text-fg">{t('about.appCurrent', { version: appUpdate.current })}</div>
+      <p className={`mt-1 text-[12px] ${appUpdate.phase === 'error' ? 'text-bad' : 'text-muted'}`}>{appUpdateText(appUpdate)}</p>
+      {appUpdate.phase === 'downloading' && (
+        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-panel-2" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={appUpdate.progress ?? 0}>
+          <div className="h-full rounded-full bg-accent transition-[width] duration-300" style={{ width: `${appUpdate.progress ?? 0}%` }} />
+        </div>
+      )}
+      <div className="mt-3 flex flex-wrap gap-2">
+        {appUpdate.phase === 'ready' ? (
+          <ActionButton variant="primary" icon={<RotateCw className="size-3.5" aria-hidden />} onAction={() => run(() => call('appUpdate.install'))}>{t('about.appInstall')}</ActionButton>
+        ) : appUpdate.phase === 'available' ? (
+          <ActionButton variant="primary" icon={<Download className="size-3.5" aria-hidden />} onAction={async () => { await call('appUpdate.download'); }}>{t('about.appDownload')}</ActionButton>
+        ) : !appUpdate.unsupported && (
+          <ActionButton disabled={busy} icon={<RefreshCw className="size-3.5" aria-hidden />} onAction={async () => { await call('appUpdate.check'); }}>{t('about.appCheck')}</ActionButton>
+        )}
+        <ActionButton icon={<ExternalLink className="size-3.5" aria-hidden />} onAction={releases}>{t('about.appReleases')}</ActionButton>
+      </div>
+    </Card>
+  );
+}
 
 /** One line for the bundled backend and one for an attached external one. */
 function UpdateVerdicts({ update, onNotes }: { update: UpdateCheckResult; onNotes: () => void }) {
@@ -53,8 +97,10 @@ export function About() {
   return (
     <div className="space-y-4">
       <PageHeader title={t('about.title')} />
+      <Banner tone="warn" title={t('about.unofficialTitle')}>{t('about.unofficialBody')}</Banner>
       <Banner tone="info" title={t('about.communityTitle')}>{t('about.communityBody')}</Banner>
       <div className="grid grid-cols-[repeat(auto-fit,minmax(320px,1fr))] gap-4">
+        <AppUpdateCard />
         <Card title={t('about.versions')}>
           {info && (
             <dl className="divide-y divide-border">

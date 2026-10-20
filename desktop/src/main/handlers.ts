@@ -12,6 +12,7 @@ import type { ActionResult, DesktopSettings, SystemInfo } from '../shared/types'
 import type { BackendManager } from '../services/backend-manager';
 import { crashLogPath } from '../services/backend-config';
 import type { ControlResult } from '../services/backend-client';
+import { RELEASES_URL, type AppUpdater } from '../services/app-updater';
 import { buildDiagnosticReport } from '../services/diagnostics';
 import { readFileTail } from '../services/file-tail';
 import { envSnippets, findExecutable, terminalCommand, toolInfo, vscodeSnippet } from '../services/integrations';
@@ -30,6 +31,7 @@ const LINKS = {
   docs: 'https://github.com/KarpelesLab/teamclaude/blob/master/docs/desktop.md',
   releases: 'https://github.com/KarpelesLab/teamclaude/releases',
   license: 'https://github.com/KarpelesLab/teamclaude/blob/master/LICENSE',
+  desktopReleases: RELEASES_URL,
 } as const;
 
 const CRASH_LOG_TAIL_BYTES = 64 * 1024;
@@ -39,6 +41,7 @@ export interface HandlerContext {
   jobs: JobRunner;
   logs: LogBuffer;
   history: ActivityLog;
+  appUpdater: AppUpdater;
   settings: SettingsStore;
   applySettings: (next: DesktopSettings, previous: DesktopSettings) => void;
   window: () => BrowserWindow | null;
@@ -188,6 +191,12 @@ export function createHandlers(ctx: HandlerContext): Handlers {
       const external = state.ownership === 'external' ? state.status?.server.version ?? null : null;
       return checkForUpdates({ bundled: ctx.bundledBackendVersion, external });
     },
+    'appUpdate.getState': () => ctx.appUpdater.getState(),
+    'appUpdate.check': () => ctx.appUpdater.check(),
+    'appUpdate.download': () => ctx.appUpdater.download(),
+    'appUpdate.install': () =>
+      ctx.appUpdater.install() ? { ok: true, message: t('h.installing') } : { ok: false, message: t('h.noUpdateReady') },
+
     'system.openTerminal': () => {
       const state = manager.getState();
       const term = terminalCommand(process.platform, process.env, name => findExecutable(name));

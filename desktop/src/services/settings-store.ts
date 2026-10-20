@@ -18,6 +18,9 @@ export const DEFAULT_SETTINGS: DesktopSettings = {
   minimizeToTray: true,
   keepProxyOnWindowClose: true,
   restartOnCrash: false,
+  // The one exception: this build exists to be updated from the fork's
+  // releases. It checks the release feed only; it calls no provider.
+  autoUpdate: true,
   notifications: {
     proxyCrashed: true,
     authExpired: true,
@@ -25,6 +28,7 @@ export const DEFAULT_SETTINGS: DesktopSettings = {
     quotaExhausted: true,
     backendRecovered: true,
     updateAvailable: true,
+    appUpdateReady: true,
   },
 };
 

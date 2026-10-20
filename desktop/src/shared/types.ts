@@ -187,6 +187,8 @@ export interface NotificationPrefs {
   quotaExhausted: boolean;
   backendRecovered: boolean;
   updateAvailable: boolean;
+  /** A new version of this app has been downloaded and installs on restart. */
+  appUpdateReady: boolean;
 }
 
 export interface DesktopSettings {
@@ -198,7 +200,24 @@ export interface DesktopSettings {
   minimizeToTray: boolean;
   keepProxyOnWindowClose: boolean;
   restartOnCrash: boolean;
+  /** Check the releases for a new app version, download it and install it on quit. */
+  autoUpdate: boolean;
   notifications: NotificationPrefs;
+}
+
+/** Why this copy of the app cannot update itself. */
+export type AppUpdateUnsupported = 'development' | 'portable' | 'package-manager' | 'no-feed';
+
+export interface AppUpdateState {
+  unsupported: AppUpdateUnsupported | null;
+  phase: 'idle' | 'checking' | 'up-to-date' | 'available' | 'downloading' | 'ready' | 'error';
+  current: string;
+  latest: string | null;
+  /** Download progress, 0–100, while downloading. */
+  progress: number | null;
+  error: string | null;
+  checkedAt: number | null;
+  releasesUrl: string;
 }
 
 export interface CliToolInfo {

@@ -67,10 +67,10 @@ const optionalName = (v: Record<string, unknown>): string | null =>
 
 const THEMES: Theme[] = ['dark', 'light', 'system'];
 const NOTIFICATION_KEYS: Array<keyof NotificationPrefs> = [
-  'proxyCrashed', 'authExpired', 'allUnavailable', 'quotaExhausted', 'backendRecovered', 'updateAvailable',
+  'proxyCrashed', 'authExpired', 'allUnavailable', 'quotaExhausted', 'backendRecovered', 'updateAvailable', 'appUpdateReady',
 ];
 const BOOLEAN_SETTINGS: Array<keyof DesktopSettings> = [
-  'launchAtLogin', 'startProxyOnLaunch', 'startMinimized', 'minimizeToTray', 'keepProxyOnWindowClose', 'restartOnCrash',
+  'launchAtLogin', 'startProxyOnLaunch', 'startMinimized', 'minimizeToTray', 'keepProxyOnWindowClose', 'restartOnCrash', 'autoUpdate',
 ];
 
 export const validateSettingsPatch: Validator = args => {
@@ -144,11 +144,16 @@ export const VALIDATORS: Record<MethodName, Validator> = {
   'system.openDashboard': none,
   'system.openConfigDir': none,
   'system.openExternal': object(['target'], [], v =>
-    ['repository', 'issues', 'docs', 'releases', 'license'].includes(v.target as string) ? null : 'unknown link'),
+    ['repository', 'issues', 'docs', 'releases', 'license', 'desktopReleases'].includes(v.target as string) ? null : 'unknown link'),
   'system.copyText': object(['text'], [], v => (typeof v.text === 'string' && v.text.length <= 200_000 ? null : 'invalid text')),
   'system.exportDiagnostics': none,
   'system.checkForUpdates': none,
   'system.openTerminal': none,
+
+  'appUpdate.getState': none,
+  'appUpdate.check': none,
+  'appUpdate.download': none,
+  'appUpdate.install': none,
 };
 
 export function isMethodName(value: unknown): value is MethodName {

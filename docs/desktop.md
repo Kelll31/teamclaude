@@ -145,6 +145,42 @@ Artifacts land in `desktop/dist/`. `node scripts/check-dist.mjs win` (or
 carries a credential or a config file. The Linux `.deb` needs `fakeroot` and
 `dpkg`.
 
+## Releases and updates (Kelll31/teamclaude fork)
+
+> Unofficial. These builds are made and published by the
+> [Kelll31/teamclaude](https://github.com/Kelll31/teamclaude) fork, are not
+> code-signed, and are not TeamClaude releases. Upstream publishes no desktop
+> builds.
+
+Releases live at <https://github.com/Kelll31/teamclaude/releases> under tags
+`desktop-vX.Y.Z`. The Windows installer and the AppImage update themselves:
+a minute after launch and every 6 hours the app reads the release feed
+(`latest.yml`, `latest-linux.yml`), downloads a newer version in the
+background and installs it silently when the app quits, or at once from
+**About → App updates → Restart and update**. **Settings → App updates**
+turns this off; then About offers Check and Download by hand. The portable
+`.exe` and the `.deb` cannot replace themselves: About says so and links to
+the releases page. A development run never checks.
+
+Publishing a release:
+
+```bash
+cd desktop && npm version 0.2.1 --no-git-tag-version
+```
+
+Commit that, then push a tag that matches it:
+
+```bash
+git tag desktop-v0.2.1 && git push origin desktop-v0.2.1
+```
+
+The `Desktop release (fork, unofficial)` workflow checks that the tag matches
+`desktop/package.json`, runs the checks, builds with
+`electron-builder.fork.yml` (which adds the feed), scans and smoke-tests the
+packages, and publishes one release with the installers, the feed files and
+SHA-256 sums. Locally, `npm run release:win` / `npm run release:linux` build
+the same packages without publishing.
+
 ## Manual test checklist
 
 The automated checks cannot click through a real desktop session. Before a

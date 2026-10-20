@@ -23,6 +23,7 @@ import { createHandlers, openDashboard, type HandlerContext } from './handlers';
 import { registerIpc } from './ipc';
 import { Notifier } from './notifications';
 import { AppTray } from './tray';
+import { createAppUpdater } from './updater';
 import { createMainWindow, rendererUrl } from './window';
 
 const POLL_VISIBLE_MS = 2000;
@@ -119,6 +120,14 @@ async function init(): Promise<void> {
 
   const icon = loadIcon();
   const notifier = new Notifier(() => settings.get().notifications, t, () => showWindow());
+  const appUpdater = createAppUpdater({
+    auto: () => settings.get().autoUpdate,
+    prefs: () => settings.get().notifications,
+    t,
+    log: text => logs.note(text),
+    onState: state => send({ type: 'appUpdate', state }),
+    onNotificationClick: () => showWindow('about'),
+  });
 
   const history = new ActivityLog();
   manager.on('state', (state: BackendState) => {
@@ -139,6 +148,7 @@ async function init(): Promise<void> {
     jobs,
     logs,
     history,
+    appUpdater,
     settings,
     window: () => mainWindow,
     t,
@@ -147,6 +157,7 @@ async function init(): Promise<void> {
     userDataDir: userData,
     applySettings: (next: DesktopSettings, previous: DesktopSettings) => {
       if (next.launchAtLogin !== previous.launchAtLogin) applyLoginItem(next.launchAtLogin);
+      if (next.autoUpdate !== previous.autoUpdate) appUpdater.applyAuto(next.autoUpdate);
       if (next.language !== previous.language) tray?.update(manager.getState());
       send({ type: 'settings', settings: next });
     },
@@ -195,6 +206,7 @@ async function init(): Promise<void> {
   await manager.refresh();
   if (initial.startProxyOnLaunch && manager.getState().phase !== 'running') void manager.start();
   manager.startPolling(mainWindow.isVisible() ? POLL_VISIBLE_MS : POLL_HIDDEN_MS);
+  appUpdater.start();
 
   app.on('before-quit', event => {
     quitting = true;

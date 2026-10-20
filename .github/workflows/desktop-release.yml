@@ -1,0 +1,129 @@
+name: Desktop release (fork, unofficial)
+
+# Unofficial, unsigned TeamClaude Desktop builds for the Kelll31/teamclaude
+# fork. A tag desktop-vX.Y.Z (matching desktop/package.json) builds Windows and
+# Linux packages with the update feed, checks and smoke-tests them, and
+# publishes one GitHub release with SHA-256 sums. Installed apps update from
+# these releases (electron-updater). Nothing here goes to the upstream project.
+on:
+  push:
+    tags: ['desktop-v*']
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: desktop
+
+jobs:
+  build:
+    name: build ${{ matrix.target }}
+    if: github.repository == 'Kelll31/teamclaude'
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - target: win
+            os: windows-latest
+          - target: linux
+            os: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+
+      - name: Tag matches the app version
+        shell: bash
+        run: |
+          version=$(node -p "require('./package.json').version")
+          if [ "desktop-v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "Tag $GITHUB_REF_NAME does not match desktop/package.json version $version" >&2
+            exit 1
+          fi
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Lint, typecheck, test
+        run: npm run lint && npm run typecheck && npm test
+
+      - name: Build packages with the update feed
+        run: npm run release:${{ matrix.target }}
+
+      - name: Check artifacts and scan for secrets
+        run: node scripts/check-dist.mjs ${{ matrix.target }}
+
+      - name: The package carries the update feed
+        shell: bash
+        run: |
+          feed=$(find dist -path '*resources/app-update.yml' | head -n 1)
+          test -n "$feed" || { echo 'app-update.yml missing from the package' >&2; exit 1; }
+          grep -q 'owner: Kelll31' "$feed"
+          ls dist/latest*.yml
+
+      - name: Smoke test the packaged app (Windows)
+        if: matrix.target == 'win'
+        run: node scripts/smoke.mjs win
+
+      - name: Smoke test the packaged app (Linux, X11 via Xvfb)
+        if: matrix.target == 'linux'
+        run: xvfb-run --auto-servernum node scripts/smoke.mjs linux
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release-${{ matrix.target }}
+          path: |
+            desktop/dist/*.exe
+            desktop/dist/*.exe.blockmap
+            desktop/dist/*.AppImage
+            desktop/dist/*.deb
+            desktop/dist/latest*.yml
+          if-no-files-found: error
+          retention-days: 7
+
+  release:
+    name: publish release
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    defaults:
+      run:
+        working-directory: .
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          path: assets
+          merge-multiple: true
+
+      - name: Write release notes and checksums
+        shell: bash
+        run: |
+          version="${GITHUB_REF_NAME#desktop-v}"
+          (cd assets && sha256sum -- * > SHA256SUMS.txt)
+          sed "s/{{VERSION}}/$version/g" desktop/release-notes.md > notes.md
+          {
+            echo ''
+            echo '### SHA-256'
+            echo '```'
+            cat assets/SHA256SUMS.txt
+            echo '```'
+          } >> notes.md
+
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          version="${GITHUB_REF_NAME#desktop-v}"
+          gh release create "$GITHUB_REF_NAME" assets/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "TeamClaude Desktop $version — unofficial build" \
+            --notes-file notes.md \
+            --latest

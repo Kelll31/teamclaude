@@ -1,7 +1,7 @@
 {
   "name": "teamclaude-desktop",
   "productName": "TeamClaude Desktop",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "Desktop control panel for a local TeamClaude proxy (Windows and Linux)",
   "license": "MIT",
@@ -22,7 +22,9 @@
     "test:e2e": "vitest run -c vitest.e2e.config.mts",
     "dist:win": "npm run build && electron-builder --win --x64 --publish never",
     "dist:linux": "npm run build && electron-builder --linux --x64 --publish never",
-    "dist:dir": "npm run build && electron-builder --dir --publish never"
+    "dist:dir": "npm run build && electron-builder --dir --publish never",
+    "release:win": "npm run build && electron-builder --config electron-builder.fork.yml --win --x64 --publish never",
+    "release:linux": "npm run build && electron-builder --config electron-builder.fork.yml --linux --x64 --publish never"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.0",
@@ -43,5 +45,8 @@
     "typescript-eslint": "8.71.2",
     "vite": "8.3.4",
     "vitest": "5.0.5"
+  },
+  "dependencies": {
+    "electron-updater": "6.8.10"
   }
 }

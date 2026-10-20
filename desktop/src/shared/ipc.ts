@@ -6,7 +6,7 @@
 
 import type { History, HistoryDelta } from './activity';
 import type {
-  ActionResult, BackendState, DesktopSettings, DistributionMode, IntegrationInfo, JobView, LogLine,
+  ActionResult, AppUpdateState, BackendState, DesktopSettings, DistributionMode, IntegrationInfo, JobView, LogLine,
   SystemInfo, UpdateCheckResult,
 } from './types';
 
@@ -53,12 +53,20 @@ export interface Methods {
   'system.integrations': { args: void; result: IntegrationInfo };
   'system.openDashboard': { args: void; result: ActionResult };
   'system.openConfigDir': { args: void; result: ActionResult };
-  'system.openExternal': { args: { target: 'repository' | 'issues' | 'docs' | 'releases' | 'license' }; result: ActionResult };
+  'system.openExternal': { args: { target: ExternalLink }; result: ActionResult };
   'system.copyText': { args: { text: string }; result: ActionResult };
   'system.exportDiagnostics': { args: void; result: ActionResult };
   'system.checkForUpdates': { args: void; result: UpdateCheckResult };
   'system.openTerminal': { args: void; result: ActionResult };
+
+  'appUpdate.getState': { args: void; result: AppUpdateState };
+  'appUpdate.check': { args: void; result: AppUpdateState };
+  'appUpdate.download': { args: void; result: AppUpdateState };
+  'appUpdate.install': { args: void; result: ActionResult };
 }
+
+/** Links the main process opens, by a fixed list. */
+export type ExternalLink = 'repository' | 'issues' | 'docs' | 'releases' | 'license' | 'desktopReleases';
 
 export type MethodName = keyof Methods;
 export type MethodArgs<M extends MethodName> = Methods[M]['args'];
@@ -68,6 +76,7 @@ export type MethodResult<M extends MethodName> = Methods[M]['result'];
 export type DesktopEvent =
   | { type: 'backend'; state: BackendState }
   | { type: 'history'; delta: HistoryDelta }
+  | { type: 'appUpdate'; state: AppUpdateState }
   | { type: 'log'; lines: LogLine[] }
   | { type: 'job'; job: JobView }
   | { type: 'settings'; settings: DesktopSettings }
