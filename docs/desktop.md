@@ -127,6 +127,36 @@ Artifacts land in `desktop/dist/`. `node scripts/check-dist.mjs win` (or
 carries a credential or a config file. The Linux `.deb` needs `fakeroot` and
 `dpkg`.
 
+## Manual test checklist
+
+The automated checks cannot click through a real desktop session. Before a
+release, or when a change touches the area, run these by hand on Windows 10/11
+x64 and on one Linux x64 desktop (note X11 or Wayland and the desktop
+environment). Use your own accounts; never paste their names or tokens into
+an issue.
+
+| Area | Steps | Expected |
+| --- | --- | --- |
+| Clean install | Install the NSIS package (Windows) or the `.deb`/AppImage (Linux) on a machine without Node.js | The app starts; About shows the bundled backend version |
+| Existing data | Install on a machine that already has a TeamClaude config and accounts | The accounts appear unchanged; the app does not rewrite the config file |
+| Attach | Start `teamclaude` in a terminal, then the app | Phase *running*, ownership *external*; Stop is not offered |
+| Own backend | With no proxy running, press Start | Phase *starting* then *running*; Quit from the tray stops it |
+| Port conflict | Occupy the configured port with another program, press Start | *Port conflict* is shown; the other program keeps running |
+| Sign in | Accounts → add a Claude account, finish the browser sign-in | The job ends successfully and the account appears without a restart |
+| API key | Add an API-key account | The key is not shown in the job output or in Logs |
+| Account controls | Switch, disable/enable, change priority | The change shows within one poll and in `teamclaude status` |
+| Routing | Change the threshold and distribution mode | Values persist after an app restart |
+| Tray | Close the window, use the tray menu | The proxy keeps serving; Open and Quit work |
+| No tray (Wayland without StatusNotifier) | Close the window | The app quits instead of hiding |
+| Launch at login | Turn it on, sign out and in | The app starts (minimized if that is set) |
+| Crash | Kill the owned backend process | A crash notification with the exit code; with restart on, it comes back |
+| Notifications | Let an account's sign-in expire or exhaust a window | One notification per event, no credential in its text |
+| Diagnostics | Export diagnostics | The report numbers accounts and contains no token, key or email |
+| Uninstall | Uninstall the app | The TeamClaude config and accounts remain |
+
+Record which rows passed, on what OS and version, in the pull request; rows
+not run are listed as not verified.
+
 ## Troubleshooting
 
 | Symptom | What to do |
