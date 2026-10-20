@@ -4,6 +4,7 @@
 // against its validator before anything runs. Adding a capability means adding
 // a row here, which keeps the privileged surface reviewable in one file.
 
+import type { History, HistoryDelta } from './activity';
 import type {
   ActionResult, BackendState, DesktopSettings, IntegrationInfo, JobView, LogLine,
   SystemInfo, UpdateCheckResult,
@@ -43,6 +44,8 @@ export interface Methods {
   'logs.clear': { args: void; result: ActionResult };
   'logs.readCrashLog': { args: void; result: string | null };
 
+  'history.get': { args: void; result: History };
+
   'settings.get': { args: void; result: DesktopSettings };
   'settings.update': { args: Partial<DesktopSettings>; result: DesktopSettings };
 
@@ -64,6 +67,7 @@ export type MethodResult<M extends MethodName> = Methods[M]['result'];
 /** Events pushed from main to the renderer. */
 export type DesktopEvent =
   | { type: 'backend'; state: BackendState }
+  | { type: 'history'; delta: HistoryDelta }
   | { type: 'log'; lines: LogLine[] }
   | { type: 'job'; job: JobView }
   | { type: 'settings'; settings: DesktopSettings }

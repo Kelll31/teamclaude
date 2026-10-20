@@ -1,30 +1,16 @@
 // Renderer state: the latest BackendState pushed by the main process, the
-// settings, log lines, CLI jobs, and two things the renderer derives itself
-// from successive snapshots — an activity timeline of observed changes and a
-// short series of samples for the overview chart. Nothing here is invented:
-// each entry records a difference between two real status readings.
+// settings, log lines, CLI jobs, and the activity timeline and chart samples
+// the main process keeps (shared/activity.ts): the whole history once at
+// load, then each reading's additions.
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useState, type ReactNode } from 'react';
+import {
+  appendHistory, freshPart, mergeSnapshot, type ActivityEvent, type History, type HistoryDelta, type Sample,
+} from '../shared/activity';
 import type { DesktopEvent, PageId } from '../shared/ipc';
 import type { ActionResult, BackendState, DesktopSettings, JobView, LogLine } from '../shared/types';
 import { bridge, call } from './api';
-import { phaseText, unavailableText } from './format';
 import { setLanguage, t } from './i18n';
-
-export interface ActivityEvent {
-  id: number;
-  at: number;
-  kind: 'phase' | 'switch' | 'account' | 'error';
-  provider: string | null;
-  account: string | null;
-  text: string;
-}
-
-export interface Sample {
-  at: number;
-  activeSessions: number;
-  requests: number | null;
-}
 
 interface Data {
   backend: BackendState | null;
@@ -38,6 +24,8 @@ interface Data {
 
 type Action =
   | { type: 'backend'; state: BackendState }
+  | { type: 'history'; history: History }
+  | { type: 'historyDelta'; delta: HistoryDelta }
   | { type: 'settings'; settings: DesktopSettings }
   | { type: 'logs'; lines: LogLine[]; replace?: boolean }
   | { type: 'job'; job: JobView }
@@ -45,67 +33,15 @@ type Action =
   | { type: 'loadError'; message: string };
 
 const MAX_LOGS = 5000;
-const MAX_ACTIVITY = 500;
-const MAX_SAMPLES = 180;
-
-let activitySeq = 0;
-
-export function diffActivity(prev: BackendState | null, next: BackendState, at: number): ActivityEvent[] {
-  const events: ActivityEvent[] = [];
-  const push = (kind: ActivityEvent['kind'], text: string, provider: string | null = null, account: string | null = null) =>
-    events.push({ id: ++activitySeq, at, kind, provider, account, text });
-  if (!prev) return events;
-  if (prev.phase !== next.phase) {
-    const text = t('ev.phase', { from: phaseText(prev.phase), to: phaseText(next.phase) });
-    push(next.phase === 'error' || next.phase === 'crash-loop' ? 'error' : 'phase', next.lastError ? `${text}: ${next.lastError.split('\n')[0]}` : text);
-  }
-  const before = prev.status;
-  const after = next.status;
-  if (!before || !after) return events;
-  const none = t('overview.none');
-  for (const [provider, name] of Object.entries(after.currentAccounts)) {
-    const was = before.currentAccounts[provider] ?? null;
-    if (was !== name) push('switch', t('ev.switch', { provider, from: was ?? none, to: name ?? none }), provider, name);
-  }
-  const old = new Map(before.accounts.map(a => [`${a.provider}\u0000${a.name}`, a]));
-  for (const a of after.accounts) {
-    const was = old.get(`${a.provider}\u0000${a.name}`);
-    if (!was) {
-      push('account', t('ev.appeared', { name: a.name }), a.provider, a.name);
-      continue;
-    }
-    if (was.unavailable !== a.unavailable) {
-      push(a.unavailable === 'error' ? 'error' : 'account',
-        t('ev.availability', { name: a.name, from: unavailableText(was.unavailable), to: unavailableText(a.unavailable) }), a.provider, a.name);
-    }
-    if (a.error && a.error.code !== was.error?.code) push('error', t('ev.error', { name: a.name, code: a.error.code, detail: a.error.detail }), a.provider, a.name);
-  }
-  for (const a of before.accounts) {
-    if (!after.accounts.some(b => b.provider === a.provider && b.name === a.name)) push('account', t('ev.removed', { name: a.name }), a.provider, a.name);
-  }
-  return events;
-}
-
-function sampleOf(state: BackendState, at: number): Sample | null {
-  const status = state.status;
-  if (!status) return null;
-  const counts = status.accounts.map(a => a.totalRequests).filter((n): n is number => n !== null);
-  return { at, activeSessions: status.sessions.active, requests: counts.length ? counts.reduce((x, y) => x + y, 0) : null };
-}
 
 function reduce(data: Data, action: Action): Data {
   switch (action.type) {
-    case 'backend': {
-      const at = Date.now();
-      const events = diffActivity(data.backend, action.state, at);
-      const sample = action.state.statusAt !== data.backend?.statusAt ? sampleOf(action.state, at) : null;
-      return {
-        ...data,
-        backend: action.state,
-        activity: events.length ? [...events.toReversed(), ...data.activity].slice(0, MAX_ACTIVITY) : data.activity,
-        samples: sample ? [...data.samples, sample].slice(-MAX_SAMPLES) : data.samples,
-      };
-    }
+    case 'backend':
+      return { ...data, backend: action.state };
+    case 'history':
+      return { ...data, ...mergeSnapshot(action.history, data) };
+    case 'historyDelta':
+      return { ...data, ...appendHistory(data, freshPart(data, action.delta)) };
     case 'settings':
       return { ...data, settings: action.settings };
     case 'logs': {
@@ -159,15 +95,17 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const off = api.onEvent((event: DesktopEvent) => {
       switch (event.type) {
         case 'backend': dispatch({ type: 'backend', state: event.state }); break;
+        case 'history': dispatch({ type: 'historyDelta', delta: event.delta }); break;
         case 'log': dispatch({ type: 'logs', lines: event.lines }); break;
         case 'job': dispatch({ type: 'job', job: event.job }); break;
         case 'settings': dispatch({ type: 'settings', settings: event.settings }); break;
         case 'navigate': setPage(event.page); break;
       }
     });
-    Promise.all([call('backend.getState'), call('settings.get'), call('logs.get'), call('jobs.list')])
-      .then(([state, settings, logs, jobs]) => {
+    Promise.all([call('backend.getState'), call('settings.get'), call('logs.get'), call('jobs.list'), call('history.get')])
+      .then(([state, settings, logs, jobs, history]) => {
         dispatch({ type: 'backend', state });
+        dispatch({ type: 'history', history });
         dispatch({ type: 'settings', settings });
         dispatch({ type: 'logs', lines: logs, replace: true });
         dispatch({ type: 'jobs', jobs });

@@ -1,8 +1,10 @@
 import { Activity as ActivityIcon } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Badge, Card, controlClass, EmptyState, PageHeader, Rich, type Tone } from '../components/ui';
+import type { ActivityEvent } from '../../shared/activity';
+import { activityText } from '../format';
 import { t, type MessageKey } from '../i18n';
-import { useStore, type ActivityEvent } from '../store';
+import { useStore } from '../store';
 
 // The backend's own log is English; these words pick out its routing lines.
 const ROUTING_LINE = /switch|rotat|exhaust|threshold|rate.?limit|throttl|quota|priority|disabled account|enabled account|sign(ed)? in again|refresh/i;
@@ -16,7 +18,8 @@ export function Activity() {
   const [search, setSearch] = useState('');
   const providers = useMemo(() => [...new Set(activity.map(e => e.provider).filter((p): p is string => !!p))], [activity]);
   const needle = search.toLowerCase();
-  const events = activity.filter(e => (!kind || e.kind === kind) && (!provider || e.provider === provider) && (!needle || e.text.toLowerCase().includes(needle)));
+  const worded = useMemo(() => activity.map(e => ({ ...e, text: activityText(e) })), [activity]);
+  const events = worded.filter(e => (!kind || e.kind === kind) && (!provider || e.provider === provider) && (!needle || e.text.toLowerCase().includes(needle)));
   const routingLines = logs.filter(l => l.stream !== 'desktop' && ROUTING_LINE.test(l.text) && (!needle || l.text.toLowerCase().includes(needle))).slice(-200).reverse();
 
   return (

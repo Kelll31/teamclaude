@@ -132,6 +132,8 @@ export const VALIDATORS: Record<MethodName, Validator> = {
   'logs.clear': none,
   'logs.readCrashLog': none,
 
+  'history.get': none,
+
   'settings.get': none,
   'settings.update': validateSettingsPatch,
 

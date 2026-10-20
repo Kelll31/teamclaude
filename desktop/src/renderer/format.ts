@@ -1,5 +1,6 @@
 // Display helpers. A missing value is shown as "Unknown" — never estimated.
 
+import type { ActivityEvent } from '../shared/activity';
 import { t, type MessageKey } from './i18n';
 
 export function unknown(): string {
@@ -53,6 +54,24 @@ export function unavailableText(code: string | null): string {
 
 export function phaseText(phase: string): string {
   return t(`phase.${phase}` as MessageKey);
+}
+
+/** The words for a timeline entry, in the current language. */
+export function activityText(event: ActivityEvent): string {
+  const d = event.detail;
+  const name = event.account ?? '';
+  const none = t('overview.none');
+  switch (d.type) {
+    case 'phase': {
+      const text = t('ev.phase', { from: phaseText(d.from), to: phaseText(d.to) });
+      return d.error ? `${text}: ${d.error}` : text;
+    }
+    case 'switch': return t('ev.switch', { provider: event.provider ?? '', from: d.from ?? none, to: d.to ?? none });
+    case 'appeared': return t('ev.appeared', { name });
+    case 'removed': return t('ev.removed', { name });
+    case 'availability': return t('ev.availability', { name, from: unavailableText(d.from), to: unavailableText(d.to) });
+    case 'error': return t('ev.error', { name, code: d.code, detail: d.detail });
+  }
 }
 
 export function truncateMiddle(text: string, max = 24): string {

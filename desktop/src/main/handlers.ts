@@ -6,6 +6,7 @@ import { writeFileSync, existsSync } from 'node:fs';
 import { arch, platform, release } from 'node:os';
 import { dirname } from 'node:path';
 import { clipboard, dialog, shell, type BrowserWindow } from 'electron';
+import type { ActivityLog } from '../shared/activity';
 import type { Translate } from '../shared/i18n';
 import type { ActionResult, DesktopSettings, SystemInfo } from '../shared/types';
 import type { BackendManager } from '../services/backend-manager';
@@ -37,6 +38,7 @@ export interface HandlerContext {
   manager: BackendManager;
   jobs: JobRunner;
   logs: LogBuffer;
+  history: ActivityLog;
   settings: SettingsStore;
   applySettings: (next: DesktopSettings, previous: DesktopSettings) => void;
   window: () => BrowserWindow | null;
@@ -127,6 +129,8 @@ export function createHandlers(ctx: HandlerContext): Handlers {
       const text = readFileTail(crashLogPath(manager.getState().configPath), CRASH_LOG_TAIL_BYTES);
       return text === null ? null : sanitizeText(text);
     },
+
+    'history.get': () => ctx.history.history(),
 
     'settings.get': () => ctx.settings.get(),
     'settings.update': patch => {
