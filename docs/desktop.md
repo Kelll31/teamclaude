@@ -47,7 +47,7 @@ stop a proxy it did not start.
 | Page | What it shows and does |
 | --- | --- |
 | Overview | Proxy state, endpoint, backend version, account counts, current account per provider, quota bars with 5-hour and weekly reset countdowns, request count, data freshness. |
-| Accounts | Accounts grouped by provider: type, token status (never the token), availability and why not, quota, next reset, priority, rotation toggle. Add, import, rename, remove (with confirmation), prefer, sign in again. |
+| Accounts | Accounts grouped by provider: type, token status (never the token), availability and why not, quota, next reset, the last 12 hours of 5-hour (or weekly) use as recorded while the app ran, priority, rotation toggle. Add, import, rename, remove (with confirmation), prefer, sign in again. |
 | Sessions | Session counts, and the individual sessions when the proxy runs with `proxy.sessionDetail`, filterable by account and client. |
 | Activity | Changes the app observed between status readings (switches, accounts becoming unavailable) and routing lines from the proxy's log, without request content. |
 | Routing | Distribution mode, switch threshold, priorities, model routes, background probe and warm-up. Settings that can spend extra requests are off by default and carry a warning. |
@@ -58,7 +58,12 @@ stop a proxy it did not start.
 
 Quota numbers come only from what the backend has seen. When there is no
 reading yet the app says **Unknown**, never a guess. A per-minute rate limit
-is shown as such and is not counted as an exhausted quota.
+is shown as such and is not counted as an exhausted quota. The quota history
+is one reading a minute kept in memory while the app runs; a stretch with no
+reading is left out, not filled in.
+
+Keyboard: **Ctrl+1** … **Ctrl+9** open the pages in sidebar order; **F5** or
+**Ctrl+R** reads the proxy status again.
 
 ## Background mode and tray
 

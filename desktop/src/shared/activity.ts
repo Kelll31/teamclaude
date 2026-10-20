@@ -1,14 +1,18 @@
-// The activity timeline and the overview chart's samples. The main process
-// keeps them (ActivityLog) for as long as the app runs, so a window that is
-// reloaded, or only opened from the tray hours later, still shows what
-// happened. Each entry records a difference between two real status readings;
-// nothing is invented. Entries hold raw values (phases, reason codes, names),
-// and the renderer words them, so a language switch rewords old entries too.
+// The activity timeline, the overview chart's samples and each account's quota
+// history. The main process keeps them (ActivityLog) for as long as the app
+// runs, so a window that is reloaded, or only opened from the tray hours
+// later, still shows what happened. Each entry records a real status reading
+// or a difference between two; nothing is invented or interpolated. Timeline
+// entries hold raw values (phases, reason codes, names), and the renderer
+// words them, so a language switch rewords old entries too.
 
 import type { BackendState } from './types';
 
 export const MAX_ACTIVITY = 500;
 export const MAX_SAMPLES = 180;
+/** Quota moves slowly; one point a minute for the last twelve hours. */
+export const QUOTA_SAMPLE_MS = 60_000;
+export const MAX_QUOTA_POINTS = 720;
 
 export type ActivityDetail =
   | { type: 'phase'; from: string; to: string; error: string | null }
@@ -33,16 +37,34 @@ export interface Sample {
   requests: number | null;
 }
 
-/** Newest event first; samples oldest first. */
+/** Utilization (0–1) of each account's windows at one moment; null = not reported. */
+export interface QuotaPoint {
+  at: number;
+  accounts: Record<string, { fiveHour: number | null; weekly: number | null }>;
+}
+
+/** Newest event first; samples and quota points oldest first. */
 export interface History {
   activity: ActivityEvent[];
   samples: Sample[];
+  quota: QuotaPoint[];
 }
 
 /** What one status reading added. */
 export interface HistoryDelta {
   events: ActivityEvent[];
   sample: Sample | null;
+  quota: QuotaPoint | null;
+}
+
+export const EMPTY_HISTORY: History = { activity: [], samples: [], quota: [] };
+
+export function accountKey(provider: string, name: string): string {
+  return `${provider}/${name}`;
+}
+
+export function isEmptyDelta(delta: HistoryDelta): boolean {
+  return !delta.events.length && !delta.sample && !delta.quota;
 }
 
 type NewEvent = Omit<ActivityEvent, 'id' | 'at'>;
@@ -88,14 +110,27 @@ export function sampleOf(state: BackendState, at: number): Sample | null {
   return { at, activeSessions: status.sessions.active, requests: counts.length ? counts.reduce((x, y) => x + y, 0) : null };
 }
 
+export function quotaPointOf(state: BackendState, at: number): QuotaPoint | null {
+  const status = state.status;
+  if (!status || !status.accounts.length) return null;
+  const accounts: QuotaPoint['accounts'] = {};
+  for (const a of status.accounts) {
+    accounts[accountKey(a.provider, a.name)] = { fiveHour: a.fiveHour.utilization, weekly: a.weekly.utilization };
+  }
+  return { at, accounts };
+}
+
 /** Adds a delta to a history, newest event first, within the limits. */
 export function appendHistory(history: History, delta: HistoryDelta): History {
-  if (!delta.events.length && !delta.sample) return history;
+  if (isEmptyDelta(delta)) return history;
   return {
     activity: delta.events.length ? [...delta.events.toReversed(), ...history.activity].slice(0, MAX_ACTIVITY) : history.activity,
     samples: delta.sample ? [...history.samples, delta.sample].slice(-MAX_SAMPLES) : history.samples,
+    quota: delta.quota ? [...history.quota, delta.quota].slice(-MAX_QUOTA_POINTS) : history.quota,
   };
 }
+
+const lastAt = (list: Array<{ at: number }>) => list.at(-1)?.at ?? -Infinity;
 
 /**
  * The part of a delta newer than what `history` already holds. A delta can
@@ -103,24 +138,27 @@ export function appendHistory(history: History, delta: HistoryDelta): History {
  */
 export function freshPart(history: History, delta: HistoryDelta): HistoryDelta {
   const lastId = history.activity[0]?.id ?? 0;
-  const lastAt = history.samples.at(-1)?.at ?? -Infinity;
-  return { events: delta.events.filter(e => e.id > lastId), sample: delta.sample && delta.sample.at > lastAt ? delta.sample : null };
+  return {
+    events: delta.events.filter(e => e.id > lastId),
+    sample: delta.sample && delta.sample.at > lastAt(history.samples) ? delta.sample : null,
+    quota: delta.quota && delta.quota.at > lastAt(history.quota) ? delta.quota : null,
+  };
 }
 
 /** A snapshot from the main process plus whatever newer the renderer already holds. */
 export function mergeSnapshot(snapshot: History, held: History): History {
   const lastId = snapshot.activity[0]?.id ?? 0;
-  const lastAt = snapshot.samples.at(-1)?.at ?? -Infinity;
   return {
     activity: [...held.activity.filter(e => e.id > lastId), ...snapshot.activity].slice(0, MAX_ACTIVITY),
-    samples: [...snapshot.samples, ...held.samples.filter(s => s.at > lastAt)].slice(-MAX_SAMPLES),
+    samples: [...snapshot.samples, ...held.samples.filter(s => s.at > lastAt(snapshot.samples))].slice(-MAX_SAMPLES),
+    quota: [...snapshot.quota, ...held.quota.filter(q => q.at > lastAt(snapshot.quota))].slice(-MAX_QUOTA_POINTS),
   };
 }
 
 export class ActivityLog {
   private last: BackendState | null = null;
   private seq = 0;
-  private data: History = { activity: [], samples: [] };
+  private data: History = EMPTY_HISTORY;
 
   constructor(private readonly clock: () => number = Date.now) {}
 
@@ -128,9 +166,11 @@ export class ActivityLog {
   observe(state: BackendState): HistoryDelta {
     const at = this.clock();
     const events = diffActivity(this.last, state).map(e => ({ ...e, id: ++this.seq, at }));
-    const sample = state.statusAt !== this.last?.statusAt ? sampleOf(state, at) : null;
+    const fresh = state.statusAt !== this.last?.statusAt;
+    const sample = fresh ? sampleOf(state, at) : null;
+    const quota = fresh && at - lastAt(this.data.quota) >= QUOTA_SAMPLE_MS ? quotaPointOf(state, at) : null;
     this.last = state;
-    const delta = { events, sample };
+    const delta = { events, sample, quota };
     this.data = appendHistory(this.data, delta);
     return delta;
   }

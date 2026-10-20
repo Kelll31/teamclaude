@@ -1,5 +1,6 @@
-import { Component, type ErrorInfo, type ReactNode } from 'react';
+import { Component, useEffect, type ErrorInfo, type ReactNode } from 'react';
 import type { PageId } from '../shared/ipc';
+import { call } from './api';
 import { BackendBanner } from './components/BackendBanner';
 import { Sidebar } from './components/Sidebar';
 import { Banner, cx } from './components/ui';
@@ -13,6 +14,7 @@ import { Overview } from './pages/Overview';
 import { Routing } from './pages/Routing';
 import { Sessions } from './pages/Sessions';
 import { Settings } from './pages/Settings';
+import { shortcutFor } from './shortcuts';
 import { StoreProvider, useStore } from './store';
 
 const PAGES: Record<PageId, () => ReactNode> = {
@@ -58,8 +60,23 @@ function Toasts() {
   );
 }
 
+function useShortcuts(setPage: (page: PageId) => void) {
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      const shortcut = shortcutFor(event);
+      if (!shortcut) return;
+      event.preventDefault();
+      if (shortcut.type === 'page') setPage(shortcut.page);
+      else void call('backend.refresh');
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [setPage]);
+}
+
 function Shell() {
-  const { backend, page, loadError } = useStore();
+  const { backend, page, loadError, setPage } = useStore();
+  useShortcuts(setPage);
   const Page = PAGES[page];
   return (
     <div className="flex h-full">

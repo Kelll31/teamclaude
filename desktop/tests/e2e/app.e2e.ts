@@ -95,7 +95,9 @@ describe('TeamClaude Desktop', () => {
   });
 
   it('takes an account out of rotation from the Accounts page', async () => {
-    await nav('Accounts');
+    // Ctrl+2 is the second sidebar entry.
+    await page.keyboard.press('Control+2');
+    await page.getByRole('button', { name: 'Accounts', exact: true }).and(page.locator('[aria-current="page"]')).waitFor();
     const card = page.getByRole('heading', { name: 'placeholder-b', exact: true }).locator('xpath=ancestor::*[.//input[@role="switch"]][1]');
     // A controlled switch: it flips once the backend has answered, so the
     // outcome is read from the backend, not from the click.

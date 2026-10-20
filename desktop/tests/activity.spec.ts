@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { normalizeStatus } from '../src/services/normalize';
 import {
-  ActivityLog, appendHistory, diffActivity, freshPart, MAX_ACTIVITY, mergeSnapshot, type ActivityEvent, type History,
+  ActivityLog, appendHistory, diffActivity, EMPTY_HISTORY, freshPart, MAX_ACTIVITY, mergeSnapshot, QUOTA_SAMPLE_MS,
+  type ActivityEvent, type History,
 } from '../src/shared/activity';
 import type { BackendState } from '../src/shared/types';
 import { rawAccount, rawStatus } from './fixtures';
@@ -68,28 +69,47 @@ describe('ActivityLog', () => {
     expect(log.history().activity.map(e => e.id)).toEqual([2, 1]);
     expect(log.history().samples.map(s => s.at)).toEqual([100, 300]);
   });
+
+  it('records each account\'s quota at most once a minute, as reported', () => {
+    let now = 0;
+    const log = new ActivityLog(() => now);
+    const first = log.observe(state({ statusAt: 1 }));
+    expect(first.quota).toEqual({ at: 0, accounts: { 'anthropic/alice@example.com': { fiveHour: 0.42, weekly: 0.1 } } });
+    now = QUOTA_SAMPLE_MS - 1;
+    expect(log.observe(state({ statusAt: 2 })).quota).toBeNull();
+    now = QUOTA_SAMPLE_MS;
+    expect(log.observe(state({ statusAt: 3 })).quota?.at).toBe(QUOTA_SAMPLE_MS);
+    // No status, no point: a gap stays a gap.
+    now = QUOTA_SAMPLE_MS * 3;
+    expect(log.observe(state({ statusAt: 4 }, null)).quota).toBeNull();
+    expect(log.history().quota).toHaveLength(2);
+  });
 });
 
 describe('history merging', () => {
   it('caps the timeline, newest first', () => {
     const many = Array.from({ length: MAX_ACTIVITY + 5 }, (_, i) => event(i + 1));
-    const history = appendHistory({ activity: [], samples: [] }, { events: many, sample: null });
+    const history = appendHistory(EMPTY_HISTORY, { events: many, sample: null, quota: null });
     expect(history.activity).toHaveLength(MAX_ACTIVITY);
     expect(history.activity[0]?.id).toBe(MAX_ACTIVITY + 5);
   });
 
   it('drops the part of a delta the snapshot already had', () => {
-    const held: History = { activity: [event(2), event(1)], samples: [{ at: 10, activeSessions: 0, requests: null }] };
-    const fresh = freshPart(held, { events: [event(2), event(3)], sample: { at: 10, activeSessions: 0, requests: null } });
+    const held: History = { activity: [event(2), event(1)], samples: [{ at: 10, activeSessions: 0, requests: null }], quota: [{ at: 10, accounts: {} }] };
+    const fresh = freshPart(held, {
+      events: [event(2), event(3)], sample: { at: 10, activeSessions: 0, requests: null }, quota: { at: 10, accounts: {} },
+    });
     expect(fresh.events.map(e => e.id)).toEqual([3]);
     expect(fresh.sample).toBeNull();
+    expect(fresh.quota).toBeNull();
   });
 
   it('keeps a delta that arrived before the initial snapshot was applied', () => {
-    const snapshot: History = { activity: [event(2), event(1)], samples: [{ at: 10, activeSessions: 0, requests: null }] };
-    const held: History = { activity: [event(3)], samples: [{ at: 20, activeSessions: 1, requests: null }] };
+    const snapshot: History = { activity: [event(2), event(1)], samples: [{ at: 10, activeSessions: 0, requests: null }], quota: [{ at: 10, accounts: {} }] };
+    const held: History = { activity: [event(3)], samples: [{ at: 20, activeSessions: 1, requests: null }], quota: [{ at: 70_010, accounts: {} }] };
     const merged = mergeSnapshot(snapshot, held);
     expect(merged.activity.map(e => e.id)).toEqual([3, 2, 1]);
     expect(merged.samples.map(s => s.at)).toEqual([10, 20]);
+    expect(merged.quota.map(q => q.at)).toEqual([10, 70_010]);
   });
 });

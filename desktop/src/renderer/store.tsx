@@ -5,7 +5,8 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useState, type ReactNode } from 'react';
 import {
-  appendHistory, freshPart, mergeSnapshot, type ActivityEvent, type History, type HistoryDelta, type Sample,
+  appendHistory, EMPTY_HISTORY, freshPart, mergeSnapshot,
+  type ActivityEvent, type History, type HistoryDelta, type QuotaPoint, type Sample,
 } from '../shared/activity';
 import type { DesktopEvent, PageId } from '../shared/ipc';
 import type { ActionResult, BackendState, DesktopSettings, JobView, LogLine } from '../shared/types';
@@ -19,6 +20,7 @@ interface Data {
   jobs: JobView[];
   activity: ActivityEvent[];
   samples: Sample[];
+  quota: QuotaPoint[];
   loadError: string | null;
 }
 
@@ -77,7 +79,7 @@ interface Store extends Data {
 
 const StoreContext = createContext<Store | null>(null);
 
-const INITIAL: Data = { backend: null, settings: null, logs: [], jobs: [], activity: [], samples: [], loadError: null };
+const INITIAL: Data = { backend: null, settings: null, logs: [], jobs: [], ...EMPTY_HISTORY, loadError: null };
 
 let toastSeq = 0;
 

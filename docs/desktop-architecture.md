@@ -111,8 +111,9 @@ callback itself; the desktop never handles a token.
 - **Polling.** Every 2 s while the window is visible, every 10 s while it is
   hidden. Status polling is a local request; it costs no quota.
 - **History.** The main process diffs successive readings into the activity
-  timeline and the overview chart's samples (`shared/activity.ts`, last 500
-  events and 180 samples, memory only). The window gets the whole history
+  timeline, the overview chart's samples and each account's quota
+  utilization (`shared/activity.ts`, last 500 events, 180 samples and 12
+  hours of one-a-minute quota points, memory only). The window gets the whole history
   when it loads and each reading's additions after that, so a window reloaded
   or first opened from the tray still shows what happened while it was
   hidden. Entries hold raw values and are worded in the renderer.

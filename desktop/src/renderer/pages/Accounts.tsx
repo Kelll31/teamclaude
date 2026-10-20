@@ -1,14 +1,16 @@
 import { ArrowDown, ArrowUp, Download, KeyRound, LogIn, Pencil, Plus, RefreshCw, Star, Trash2, Users } from 'lucide-react';
 import { useState } from 'react';
+import { accountKey } from '../../shared/activity';
 import type { AccountView } from '../../shared/types';
 import { call } from '../api';
 import { useNow } from '../clock';
 import { JobPanel } from '../components/JobPanel';
 import { FiveHourBar, QuotaBar } from '../components/QuotaBar';
+import { Sparkline } from '../components/Sparkline';
 import {
   ActionButton, Badge, Button, Card, ConfirmDialog, controlClass, EmptyState, Field, inputClass, PageHeader, Toggle, type Tone,
 } from '../components/ui';
-import { isoUntil, unavailableText } from '../format';
+import { duration, isoUntil, unavailableText } from '../format';
 import { t } from '../i18n';
 import { useStore } from '../store';
 
@@ -18,6 +20,28 @@ function tokenStatus(a: AccountView, now: number): { text: string; tone: Tone } 
   const held = isoUntil(a.credentialRejectedUntil, now);
   if (held) return { text: t('token.rejected', { when: held }), tone: 'warn' };
   return { text: t('token.ok'), tone: 'ok' };
+}
+
+/** The account's recorded utilization; a window the plan does not meter falls back to weekly. */
+function QuotaTrend({ account }: { account: AccountView }) {
+  const { quota } = useStore();
+  const key = accountKey(account.provider, account.name);
+  const fiveHour = account.sessionWindowStated !== false;
+  const points = quota.flatMap(p => {
+    const value = p.accounts[key];
+    const u = value ? (fiveHour ? value.fiveHour : value.weekly) : null;
+    return u === null || u === undefined ? [] : [{ at: p.at, u }];
+  });
+  const first = points[0];
+  const last = points[points.length - 1];
+  if (points.length < 2 || !first || !last) return <p className="mt-2 text-[11px] text-muted">{t('account.trendNone')}</p>;
+  const label = t(fiveHour ? 'account.trend5h' : 'account.trendWeekly', { span: duration(last.at - first.at) });
+  return (
+    <div className="mt-2">
+      <div className="text-[11px] text-muted">{label}</div>
+      <Sparkline values={points.map(p => p.u)} label={label} />
+    </div>
+  );
 }
 
 function AccountCard({ account, threshold, readOnly }: { account: AccountView; threshold: number | null; readOnly: boolean }) {
@@ -73,6 +97,7 @@ function AccountCard({ account, threshold, readOnly }: { account: AccountView; t
         <QuotaBar label={t('quota.weekly')} window={account.weekly} now={now} threshold={threshold} />
         {account.modelWindows.map(w => <QuotaBar key={w.label} label={t('quota.modelWeekly', { model: w.label })} window={w} now={now} threshold={threshold} />)}
       </div>
+      <QuotaTrend account={account} />
 
       <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border pt-3">
         <Toggle

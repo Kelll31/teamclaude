@@ -6,7 +6,7 @@ import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { app, BrowserWindow, nativeImage, type NativeImage } from 'electron';
-import { ActivityLog } from '../shared/activity';
+import { ActivityLog, isEmptyDelta } from '../shared/activity';
 import { languageForLocale, translator, type Translate } from '../shared/i18n';
 import { EVENT_CHANNEL, type DesktopEvent, type PageId } from '../shared/ipc';
 import type { BackendState, DesktopSettings } from '../shared/types';
@@ -124,7 +124,7 @@ async function init(): Promise<void> {
   manager.on('state', (state: BackendState) => {
     const delta = history.observe(state);
     send({ type: 'backend', state });
-    if (delta.events.length || delta.sample) send({ type: 'history', delta });
+    if (!isEmptyDelta(delta)) send({ type: 'history', delta });
     tray?.update(state);
     notifier.handle(state);
   });
