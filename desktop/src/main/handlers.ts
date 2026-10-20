@@ -179,7 +179,11 @@ export function createHandlers(ctx: HandlerContext): Handlers {
         return { ok: false, message: t('h.saveFailed', { error: describeError(err) }) };
       }
     },
-    'system.checkForUpdates': () => checkForUpdates(ctx.bundledBackendVersion ?? manager.getState().status?.server.version ?? '0.0.0'),
+    'system.checkForUpdates': () => {
+      const state = manager.getState();
+      const external = state.ownership === 'external' ? state.status?.server.version ?? null : null;
+      return checkForUpdates({ bundled: ctx.bundledBackendVersion, external });
+    },
     'system.openTerminal': () => {
       const state = manager.getState();
       const term = terminalCommand(process.platform, process.env, name => findExecutable(name));

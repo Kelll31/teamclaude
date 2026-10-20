@@ -78,10 +78,26 @@ describe('integrations', () => {
 });
 
 describe('update check', () => {
+  const registry = (version: string) => async () => ({ version });
+
   it('compares against the registry without downloading anything', async () => {
-    expect(await checkForUpdates('1.1.0', async () => ({ version: '1.2.0' }))).toMatchObject({ latest: '1.2.0', updateAvailable: true, error: null });
-    expect(await checkForUpdates('1.2.0', async () => ({ version: '1.2.0' }))).toMatchObject({ updateAvailable: false });
-    expect(await checkForUpdates('1.2.0', async () => { throw new Error('offline'); })).toMatchObject({ latest: null, error: 'offline' });
-    expect((await checkForUpdates('1.2.0', async () => ({}))).error).toBeTruthy();
+    expect(await checkForUpdates({ bundled: '1.1.0', external: null }, registry('1.2.0'))).toMatchObject({
+      latest: '1.2.0', bundled: { current: '1.1.0', updateAvailable: true }, external: null, error: null,
+    });
+    expect((await checkForUpdates({ bundled: '1.2.0', external: null }, registry('1.2.0'))).bundled).toEqual({ current: '1.2.0', updateAvailable: false });
+    expect(await checkForUpdates({ bundled: '1.2.0', external: null }, async () => { throw new Error('offline'); })).toMatchObject({
+      latest: null, bundled: { updateAvailable: false }, error: 'offline',
+    });
+    expect((await checkForUpdates({ bundled: '1.2.0', external: null }, async () => ({}))).error).toBeTruthy();
+  });
+
+  it('judges the bundled and an attached external backend apart', async () => {
+    const result = await checkForUpdates({ bundled: '1.2.0', external: '1.1.9' }, registry('1.2.0'));
+    expect(result.bundled).toEqual({ current: '1.2.0', updateAvailable: false });
+    expect(result.external).toEqual({ current: '1.1.9', updateAvailable: true });
+  });
+
+  it('reports only the latest version in a development run with nothing attached', async () => {
+    expect(await checkForUpdates({ bundled: null, external: null }, registry('1.2.0'))).toMatchObject({ latest: '1.2.0', bundled: null, external: null });
   });
 });

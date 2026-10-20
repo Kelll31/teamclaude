@@ -167,7 +167,12 @@ Builds are unsigned and produced with `--publish never`. Per `SECURITY.md`,
 third-party installers must not be presented as official releases. The
 `desktop` workflow builds artifacts for review only; a release workflow and
 code signing wait for agreement with the maintainers. Update checks are
-manual (npm registry lookup); nothing is downloaded or installed.
+manual (npm registry lookup); nothing is downloaded or installed. The check
+answers separately for the bundled backend (updated with the app) and for an
+attached external backend (updated with npm). The desktop app itself has no
+release channel yet, so it is not checked and the About page says so; an
+updater such as `electron-updater` needs signed builds and a published feed
+first.
 
 ## Known limitations
 

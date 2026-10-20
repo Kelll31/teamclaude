@@ -404,8 +404,12 @@ export const en = {
   'about.updatesBody': 'Checked only when you ask. Nothing is downloaded or installed automatically.',
   'about.check': 'Check for updates',
   'about.checkFailed': 'Could not check: {error}',
-  'about.available': 'TeamClaude {latest} is available (bundled: {current}).',
-  'about.upToDate': 'Up to date ({current}).',
+  'about.bundledOld': 'The bundled TeamClaude is {current}; {latest} is out. The bundled copy is updated with the app: install a newer build of TeamClaude Desktop.',
+  'about.bundledCurrent': 'The bundled TeamClaude is up to date ({current}).',
+  'about.externalOld': 'The TeamClaude this app is attached to is {current}; {latest} is out. Update it with `npm install -g @karpeleslab/teamclaude`.',
+  'about.externalCurrent': 'The TeamClaude this app is attached to is up to date ({current}).',
+  'about.latestOnly': 'The latest TeamClaude is {latest}.',
+  'about.desktopChannel': 'TeamClaude Desktop itself is not published as a release yet, so only the backend is checked.',
   'about.notes': 'Release notes',
 
   // ── main process: tray ──

@@ -232,10 +232,18 @@ export interface JobView {
   exitCode: number | null;
 }
 
-export interface UpdateCheckResult {
+export interface VersionVerdict {
   current: string;
-  latest: string | null;
   updateAvailable: boolean;
+}
+
+export interface UpdateCheckResult {
+  /** Latest published @karpeleslab/teamclaude, or null when the check failed. */
+  latest: string | null;
+  /** The backend shipped inside the app; updated with the app. */
+  bundled: VersionVerdict | null;
+  /** An attached TeamClaude the app did not start; updated with npm. */
+  external: VersionVerdict | null;
   url: string;
   error: string | null;
 }

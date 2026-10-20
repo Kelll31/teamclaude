@@ -18,6 +18,28 @@ function Row({ label, value }: { label: string; value: string | null }) {
 
 type Link = 'repository' | 'issues' | 'docs' | 'releases' | 'license';
 
+/** One line for the bundled backend and one for an attached external one. */
+function UpdateVerdicts({ update, onNotes }: { update: UpdateCheckResult; onNotes: () => void }) {
+  if (update.error) return <p className="mt-2 text-[12px] text-bad">{t('about.checkFailed', { error: update.error })}</p>;
+  const latest = update.latest ?? '';
+  const lines: Array<{ key: string; text: string; old: boolean }> = [];
+  if (update.bundled) {
+    const { current, updateAvailable } = update.bundled;
+    lines.push({ key: 'bundled', old: updateAvailable, text: updateAvailable ? t('about.bundledOld', { current, latest }) : t('about.bundledCurrent', { current }) });
+  }
+  if (update.external) {
+    const { current, updateAvailable } = update.external;
+    lines.push({ key: 'external', old: updateAvailable, text: updateAvailable ? t('about.externalOld', { current, latest }) : t('about.externalCurrent', { current }) });
+  }
+  if (!lines.length) lines.push({ key: 'none', old: false, text: t('about.latestOnly', { latest }) });
+  return (
+    <div className="mt-2 space-y-1 text-[12px] text-fg">
+      {lines.map(line => <p key={line.key}>{line.text}</p>)}
+      {lines.some(line => line.old) && <Button variant="ghost" onClick={onNotes}>{t('about.notes')}</Button>}
+    </div>
+  );
+}
+
 export function About() {
   const { backend, run } = useStore();
   const [info, setInfo] = useState<SystemInfo | null>(null);
@@ -61,14 +83,8 @@ export function About() {
             <div className="text-[13px] font-medium text-fg">{t('about.updates')}</div>
             <p className="mt-1 text-[12px] text-muted">{t('about.updatesBody')}</p>
             <ActionButton className="mt-2" icon={<RefreshCw className="size-3.5" aria-hidden />} onAction={async () => setUpdate(await call('system.checkForUpdates'))}>{t('about.check')}</ActionButton>
-            {update && (
-              <p className="mt-2 text-[12px] text-fg">
-                {update.error ? t('about.checkFailed', { error: update.error })
-                  : update.updateAvailable ? t('about.available', { latest: update.latest ?? '', current: update.current })
-                    : t('about.upToDate', { current: update.current })}
-                {update.updateAvailable && <Button variant="ghost" className="ml-1" onClick={() => void open('releases')()}>{t('about.notes')}</Button>}
-              </p>
-            )}
+            {update && <UpdateVerdicts update={update} onNotes={() => void open('releases')()} />}
+            <p className="mt-2 text-[12px] text-muted">{t('about.desktopChannel')}</p>
           </div>
         </Card>
       </div>

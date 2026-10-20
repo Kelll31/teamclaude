@@ -39,13 +39,27 @@ export const httpsJson: JsonGetter = (url, timeoutMs) =>
     req.on('error', reject);
   });
 
-export async function checkForUpdates(current: string, get: JsonGetter = httpsJson): Promise<UpdateCheckResult> {
+export interface InstalledVersions {
+  /** The backend copy inside this app, or null in a development run. */
+  bundled: string | null;
+  /** A TeamClaude this app did not start (terminal, service), when one is attached. */
+  external: string | null;
+}
+
+const verdict = (current: string | null, latest: string | null) =>
+  current === null ? null : { current, updateAvailable: latest !== null && compareVersions(current, latest) === -1 };
+
+/**
+ * The bundled and an attached external backend are judged apart: the first is
+ * updated with the app, the second with npm, so each gets its own answer.
+ */
+export async function checkForUpdates(installed: InstalledVersions, get: JsonGetter = httpsJson): Promise<UpdateCheckResult> {
   try {
     const body = await get(REGISTRY_URL, 10_000);
     const latest = body && typeof body === 'object' ? (body as { version?: unknown }).version : null;
     if (typeof latest !== 'string') throw new Error('registry response had no version');
-    return { current, latest, updateAvailable: compareVersions(current, latest) === -1, url: RELEASES_URL, error: null };
+    return { latest, bundled: verdict(installed.bundled, latest), external: verdict(installed.external, latest), url: RELEASES_URL, error: null };
   } catch (err) {
-    return { current, latest: null, updateAvailable: false, url: RELEASES_URL, error: (err as Error).message };
+    return { latest: null, bundled: verdict(installed.bundled, null), external: verdict(installed.external, null), url: RELEASES_URL, error: (err as Error).message };
   }
 }
