@@ -89,9 +89,10 @@ for them, and they never contain a credential.
 
 **Export diagnostics** (Settings or Logs) writes a Markdown report with the
 OS, versions, proxy state, a numbered account summary (no names or emails)
-and the last 200 log lines. Tokens, API keys, auth headers, cookies, URL
-passwords and OAuth codes are redacted, and the config file is never
-included. Read it before attaching it to an issue.
+and the last 200 log lines. Account names in those lines are replaced with
+the same numbers and any other email address with `[email]`. Tokens, API
+keys, auth headers, cookies, URL passwords and OAuth codes are redacted, and
+the config file is never included. Read it before attaching it to an issue.
 
 ## Build from source
 
@@ -111,6 +112,16 @@ npm run typecheck && npm run lint && npm test
 `npm test` runs the unit tests and an integration test that starts the real
 backend from `../src` with placeholder accounts and an upstream that never
 answers; no credentials are used.
+
+End-to-end tests drive the built app through Playwright's Electron support
+with the same placeholder setup: start the proxy, take an account out of
+rotation, change the threshold, keep the timeline across a window reload,
+export diagnostics with no account names or keys, and stop the owned backend
+on quit. They need a display (on Linux CI, Xvfb):
+
+```bash
+npm run build && npm run test:e2e
+```
 
 Packaging, on the target platform:
 
