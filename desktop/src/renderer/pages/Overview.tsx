@@ -1,6 +1,7 @@
 import { ExternalLink, Play, RefreshCw, RotateCw, ScrollText, Square } from 'lucide-react';
 import type { AccountView, BackendState } from '../../shared/types';
 import { call } from '../api';
+import { useNow } from '../clock';
 import { phaseTone } from '../components/BackendBanner';
 import { FiveHourBar, QuotaBar } from '../components/QuotaBar';
 import { Sparkline } from '../components/Sparkline';
@@ -81,7 +82,8 @@ function AccountQuotaRow({ account, now, threshold }: { account: AccountView; no
 }
 
 export function Overview() {
-  const { backend, now, samples, setPage } = useStore();
+  const { backend, samples, setPage } = useStore();
+  const now = useNow();
   if (!backend) return null;
   const status = backend.status;
   const accounts = status?.accounts ?? [];

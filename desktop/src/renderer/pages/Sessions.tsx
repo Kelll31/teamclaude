@@ -1,12 +1,14 @@
 import { ListTree } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { useNow } from '../clock';
 import { CodeBlock, Card, controlClass, EmptyState, PageHeader, Rich, Stat } from '../components/ui';
 import { ago, truncateMiddle, unknown } from '../format';
 import { t } from '../i18n';
 import { useStore } from '../store';
 
 export function Sessions() {
-  const { backend, now } = useStore();
+  const { backend } = useStore();
+  const now = useNow();
   const status = backend?.status;
   const [account, setAccount] = useState('');
   const [client, setClient] = useState('');

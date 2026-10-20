@@ -2,6 +2,7 @@ import { ArrowDown, ArrowUp, Download, KeyRound, LogIn, Pencil, Plus, RefreshCw,
 import { useState } from 'react';
 import type { AccountView } from '../../shared/types';
 import { call } from '../api';
+import { useNow } from '../clock';
 import { JobPanel } from '../components/JobPanel';
 import { FiveHourBar, QuotaBar } from '../components/QuotaBar';
 import {
@@ -20,7 +21,8 @@ function tokenStatus(a: AccountView, now: number): { text: string; tone: Tone } 
 }
 
 function AccountCard({ account, threshold, readOnly }: { account: AccountView; threshold: number | null; readOnly: boolean }) {
-  const { now, run } = useStore();
+  const { run } = useStore();
+  const now = useNow();
   const [confirmRemove, setConfirmRemove] = useState(false);
   const [renaming, setRenaming] = useState(false);
   const [newName, setNewName] = useState(account.name);

@@ -132,7 +132,6 @@ export interface Toast {
 interface Store extends Data {
   page: PageId;
   setPage: (page: PageId) => void;
-  now: number;
   toasts: Toast[];
   toast: (ok: boolean, message: string) => void;
   /** Run an action and toast its outcome; never throws. */
@@ -149,7 +148,6 @@ let toastSeq = 0;
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [data, dispatch] = useReducer(reduce, INITIAL);
   const [page, setPage] = useState<PageId>('overview');
-  const [now, setNow] = useState(Date.now());
   const [toasts, setToasts] = useState<Toast[]>([]);
 
   useEffect(() => {
@@ -176,11 +174,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       })
       .catch((err: Error) => dispatch({ type: 'loadError', message: err.message }));
     return off;
-  }, []);
-
-  useEffect(() => {
-    const timer = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(timer);
   }, []);
 
   // Set during render, not in an effect: the pages below read t() in this
@@ -224,7 +217,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     void call('logs.clear').then(() => dispatch({ type: 'logs', lines: [], replace: true }));
   }, []);
 
-  const value = useMemo<Store>(() => ({ ...data, page, setPage, now, toasts, toast, run, clearLogs }), [data, page, now, toasts, toast, run, clearLogs]);
+  const value = useMemo<Store>(() => ({ ...data, page, setPage, toasts, toast, run, clearLogs }), [data, page, toasts, toast, run, clearLogs]);
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
 }
 
