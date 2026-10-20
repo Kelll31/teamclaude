@@ -1,0 +1,217 @@
+// Application lifecycle: one instance, one window, one tray icon, one
+// BackendManager. Wires the services to Electron and nothing more — the logic
+// lives in src/services so it can be tested without Electron.
+
+import { spawn } from 'node:child_process';
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
+import { app, BrowserWindow, nativeImage, type NativeImage } from 'electron';
+import { ActivityLog, isEmptyDelta } from '../shared/activity';
+import { languageForLocale, translator, type Translate } from '../shared/i18n';
+import { EVENT_CHANNEL, type DesktopEvent, type PageId } from '../shared/ipc';
+import type { BackendState, DesktopSettings } from '../shared/types';
+import { BackendClient } from '../services/backend-client';
+import { readProxySettings, resolveConfigPath, serviceUnitPath } from '../services/backend-config';
+import { BackendManager } from '../services/backend-manager';
+import { backendSpawnSpec, readBackendVersion, resolveBackendLocation } from '../services/backend-runtime';
+import { AUTOSTART_ARG, setLinuxAutostart } from '../services/autostart';
+import { JobRunner } from '../services/job-runner';
+import { LogBuffer } from '../services/log-buffer';
+import { describeError } from '../services/sanitize';
+import { OwnedPidFile, SettingsStore } from '../services/settings-store';
+import { createHandlers, openDashboard, type HandlerContext } from './handlers';
+import { registerIpc } from './ipc';
+import { Notifier } from './notifications';
+import { AppTray } from './tray';
+import { createMainWindow, rendererUrl } from './window';
+
+const POLL_VISIBLE_MS = 2000;
+const POLL_HIDDEN_MS = 10_000;
+const MIN_BACKEND_VERSION = '1.1.0';
+
+let mainWindow: BrowserWindow | null = null;
+let tray: AppTray | null = null;
+let quitting = false;
+let shutdownDone = false;
+
+if (!app.requestSingleInstanceLock()) {
+  app.quit();
+} else {
+  app.on('second-instance', () => showWindow());
+  app.whenReady().then(init).catch(err => {
+    console.error('TeamClaude Desktop failed to start:', describeError(err));
+    app.exit(1);
+  });
+}
+
+// Defence in depth for any web contents, not only the main window.
+app.on('web-contents-created', (_event, contents) => {
+  contents.setWindowOpenHandler(() => ({ action: 'deny' }));
+  contents.on('will-attach-webview', event => event.preventDefault());
+});
+
+function send(event: DesktopEvent): void {
+  if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send(EVENT_CHANNEL, event);
+}
+
+function showWindow(page?: PageId): void {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  if (mainWindow.isMinimized()) mainWindow.restore();
+  mainWindow.show();
+  mainWindow.focus();
+  if (page) send({ type: 'navigate', page });
+}
+
+function resourcePath(...parts: string[]): string {
+  return app.isPackaged ? join(process.resourcesPath, ...parts) : join(app.getAppPath(), 'build', ...parts);
+}
+
+function loadIcon(): NativeImage | undefined {
+  const path = resourcePath('icon.png');
+  if (!existsSync(path)) return undefined;
+  const image = nativeImage.createFromPath(path);
+  return image.isEmpty() ? undefined : image;
+}
+
+function applyLoginItem(enabled: boolean): void {
+  try {
+    if (process.platform === 'linux') setLinuxAutostart(enabled, process.execPath);
+    else app.setLoginItemSettings({ openAtLogin: enabled, args: [AUTOSTART_ARG] });
+  } catch (err) {
+    console.error('Could not change launch-at-login:', describeError(err));
+  }
+}
+
+async function init(): Promise<void> {
+  const userData = app.getPath('userData');
+  // On first run the UI follows the system language when it is one we ship.
+  const settings = new SettingsStore(join(userData, 'settings.json'), undefined, { language: languageForLocale(app.getLocale()) });
+  const t = (): Translate => translator(settings.get().language);
+  const logs = new LogBuffer();
+  const location = resolveBackendLocation({
+    packaged: app.isPackaged,
+    resourcesPath: process.resourcesPath,
+    appPath: app.getAppPath(),
+  });
+  const bundledBackendVersion = location ? readBackendVersion(location.root) : null;
+  if (!location) logs.note('The bundled backend was not found; only attaching to a running proxy is possible.');
+
+  const spawnBackend = (args: string[]) => {
+    if (!location) return null;
+    const spec = backendSpawnSpec(process.execPath, location, args, process.env);
+    return spawn(spec.command, spec.args, { cwd: spec.cwd, env: spec.env, stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true });
+  };
+
+  const manager = new BackendManager({
+    configPath: () => resolveConfigPath(),
+    readSettings: path => readProxySettings(path),
+    createClient: (host, port, apiKey) => new BackendClient({ host, port, apiKey }),
+    spawnServer: () => spawnBackend(['server', '--headless']),
+    serviceInstalled: () => process.platform === 'linux' && existsSync(serviceUnitPath()),
+    killPid: (pid, signal) => process.kill(pid, signal),
+    ownedPid: new OwnedPidFile(join(userData, 'runtime.json')),
+    log: logs,
+    minBackendVersion: MIN_BACKEND_VERSION,
+    restartOnCrash: () => settings.get().restartOnCrash,
+    t,
+  });
+  const jobs = new JobRunner(spawnBackend, t);
+
+  const icon = loadIcon();
+  const notifier = new Notifier(() => settings.get().notifications, t, () => showWindow());
+
+  const history = new ActivityLog();
+  manager.on('state', (state: BackendState) => {
+    const delta = history.observe(state);
+    send({ type: 'backend', state });
+    if (!isEmptyDelta(delta)) send({ type: 'history', delta });
+    tray?.update(state);
+    notifier.handle(state);
+  });
+  logs.onLines(lines => send({ type: 'log', lines }));
+  jobs.on('job', job => send({ type: 'job', job }));
+  // The CLI notifies a running server itself; refresh so the change shows now.
+  jobs.on('done', () => { void manager.refresh(); });
+
+  const indexHtml = join(app.getAppPath(), 'out', 'renderer', 'index.html');
+  const ctx: HandlerContext = {
+    manager,
+    jobs,
+    logs,
+    history,
+    settings,
+    window: () => mainWindow,
+    t,
+    desktopVersion: app.getVersion(),
+    bundledBackendVersion,
+    userDataDir: userData,
+    applySettings: (next: DesktopSettings, previous: DesktopSettings) => {
+      if (next.launchAtLogin !== previous.launchAtLogin) applyLoginItem(next.launchAtLogin);
+      if (next.language !== previous.language) tray?.update(manager.getState());
+      send({ type: 'settings', settings: next });
+    },
+  };
+  registerIpc(createHandlers(ctx), rendererUrl(indexHtml));
+
+  const launchedAtLogin = process.argv.includes(AUTOSTART_ARG);
+  const initial = settings.get();
+  mainWindow = createMainWindow({
+    preload: join(__dirname, '..', 'preload', 'index.js'),
+    indexHtml,
+    icon,
+    show: !(initial.startMinimized || launchedAtLogin),
+    devTools: !app.isPackaged,
+  });
+
+  if (icon) {
+    const size = process.platform === 'win32' ? 16 : 22;
+    tray = AppTray.create(icon.resize({ width: size, height: size }), {
+      show: page => showWindow(page),
+      start: () => { void manager.start(); },
+      stop: () => { void manager.stop(); },
+      openDashboard: () => { openDashboard(ctx); },
+      quit: () => app.quit(),
+    }, t);
+    tray?.update(manager.getState());
+  }
+  // Without a tray, a hidden window could not be brought back.
+  if (!tray && !mainWindow.isVisible()) mainWindow.once('ready-to-show', () => mainWindow?.show());
+
+  mainWindow.on('minimize', () => {
+    if (tray && settings.get().minimizeToTray) mainWindow?.hide();
+  });
+  mainWindow.on('close', event => {
+    if (quitting) return;
+    if (tray && settings.get().keepProxyOnWindowClose) {
+      event.preventDefault();
+      mainWindow?.hide();
+      return;
+    }
+    app.quit();
+  });
+  mainWindow.on('show', () => manager.startPolling(POLL_VISIBLE_MS));
+  mainWindow.on('hide', () => manager.startPolling(POLL_HIDDEN_MS));
+
+  await manager.refresh();
+  if (initial.startProxyOnLaunch && manager.getState().phase !== 'running') void manager.start();
+  manager.startPolling(mainWindow.isVisible() ? POLL_VISIBLE_MS : POLL_HIDDEN_MS);
+
+  app.on('before-quit', event => {
+    quitting = true;
+    if (shutdownDone) return;
+    event.preventDefault();
+    jobs.cancelAll();
+    manager.shutdown({ stopOwned: true })
+      .catch(err => console.error('Shutdown error:', describeError(err)))
+      .finally(() => {
+        shutdownDone = true;
+        tray?.destroy();
+        app.quit();
+      });
+  });
+}
+
+app.on('window-all-closed', () => {
+  // The window is hidden, not closed, while the tray keeps the app alive.
+  if (!tray) app.quit();
+});
