@@ -1,5 +1,6 @@
 import { TriangleAlert } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import type { DistributionMode } from '../../shared/types';
 import { call } from '../api';
 import { JobPanel } from '../components/JobPanel';
 import { ActionButton, Badge, Banner, Button, Card, controlClass, EmptyState, Field, inputClass, PageHeader, Rich } from '../components/ui';
@@ -34,8 +35,12 @@ function ThresholdCard() {
 
 function DistributionCard() {
   const { backend } = useStore();
-  const mode = backend?.status?.sessions.distribution ?? null;
-  const set = (m: 'on' | 'off' | 'adaptive') => void call('routing.setDistribution', { mode: m });
+  const status = backend?.status;
+  const mode = status?.sessions.distribution ?? null;
+  // A backend that has the load mode reports recentRequests for every account,
+  // in every mode; an older one would refuse `distribute load`.
+  const loadSupported = status?.accounts.some(a => a.recentRequests !== null) ?? false;
+  const set = (m: DistributionMode) => void call('routing.setDistribution', { mode: m });
   return (
     <Card title={t('dist.title')}>
       <p className="mb-3 text-[12px] text-muted">{t('dist.body', { mode: mode ?? unknown() })}</p>
@@ -43,6 +48,14 @@ function DistributionCard() {
         <Button variant={mode === 'off' ? 'primary' : 'secondary'} onClick={() => set('off')}>{t('dist.off')}</Button>
         <Button variant={mode === 'even' ? 'primary' : 'secondary'} onClick={() => set('on')}>{t('dist.even')}</Button>
         <Button variant={mode === 'adaptive' ? 'primary' : 'secondary'} onClick={() => set('adaptive')}>{t('dist.adaptive')}</Button>
+        <Button
+          variant={mode === 'load' ? 'primary' : 'secondary'}
+          disabled={!loadSupported && mode !== 'load'}
+          title={loadSupported ? t('dist.loadHint') : t('dist.loadUnsupported')}
+          onClick={() => set('load')}
+        >
+          {t('dist.load')}
+        </Button>
       </div>
       <p className="mt-2 text-[11px] text-muted"><Rich text={t('dist.note')} /></p>
     </Card>
@@ -82,6 +95,7 @@ function PrioritiesCard() {
   const status = backend?.status;
   if (!status || status.accounts.length === 0) return null;
   const sorted = [...status.accounts].sort((a, b) => a.priority - b.priority || a.index - b.index);
+  const hasRecent = status.accounts.some(a => a.recentRequests !== null);
   return (
     <Card title={t('prio.title')}>
       <div className="overflow-x-auto">
@@ -91,6 +105,7 @@ function PrioritiesCard() {
               <th className="py-1.5 pr-3 font-medium">{t('prio.colPriority')}</th>
               <th className="pr-3 font-medium">{t('prio.colAccount')}</th>
               <th className="pr-3 font-medium">{t('prio.colProvider')}</th>
+              {hasRecent && <th className="pr-3 font-medium" title={t('prio.colRecentTitle')}>{t('prio.colRecent')}</th>}
               <th className="font-medium">{t('prio.colWhy')}</th>
             </tr>
           </thead>
@@ -114,6 +129,7 @@ function PrioritiesCard() {
                 </td>
                 <td className="max-w-64 truncate pr-3 text-fg" title={a.name}>{a.name}{a.isCurrent && <> <Badge tone="accent">{t('common.current')}</Badge></>}</td>
                 <td className="pr-3">{a.provider}</td>
+                {hasRecent && <td className="pr-3 tabular-nums">{a.recentRequests ?? unknown()}</td>}
                 <td className={a.unavailable ? 'text-warn' : 'text-ok'}>{unavailableText(a.unavailable)}</td>
               </tr>
             ))}

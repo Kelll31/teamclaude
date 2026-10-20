@@ -4,10 +4,12 @@
 
 import { isLanguage } from '../shared/i18n';
 import type { MethodName } from '../shared/ipc';
-import type { DesktopSettings, NotificationPrefs, Theme } from '../shared/types';
+import type { DesktopSettings, DistributionMode, NotificationPrefs, Theme } from '../shared/types';
 
 export type Validation<T = unknown> = { ok: true; value: T } | { ok: false; error: string };
 type Validator = (args: unknown) => Validation;
+
+const DISTRIBUTION_MODES: readonly DistributionMode[] = ['on', 'off', 'adaptive', 'load'];
 
 const ok = <T>(value: T): Validation<T> => ({ ok: true, value });
 const fail = (error: string): Validation<never> => ({ ok: false, error });
@@ -121,7 +123,7 @@ export const VALIDATORS: Record<MethodName, Validator> = {
   'routing.setThreshold': object(['percent'], [], v =>
     typeof v.percent === 'number' && Number.isFinite(v.percent) && v.percent >= 1 && v.percent <= 100 ? null : 'percent must be from 1 to 100'),
   'routing.setDistribution': object(['mode'], [], v =>
-    v.mode === 'on' || v.mode === 'off' || v.mode === 'adaptive' ? null : 'mode must be on, off or adaptive'),
+    DISTRIBUTION_MODES.includes(v.mode as DistributionMode) ? null : 'mode must be on, off, adaptive or load'),
   'routing.setProbe': object(['seconds'], [], v => (intIn(v.seconds, 0, 86_400) && (v.seconds === 0 || v.seconds >= 30) ? null : 'seconds must be 0 (off) or 30–86400')),
   'routing.setWarmup': object(['seconds'], [], v => (intIn(v.seconds, 0, 86_400) && (v.seconds === 0 || v.seconds >= 60) ? null : 'seconds must be 0 (off) or 60–86400')),
 

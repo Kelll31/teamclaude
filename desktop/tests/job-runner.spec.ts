@@ -32,6 +32,7 @@ describe('argument builders', () => {
     expect(removeArgs('a b')).toEqual(['remove', 'a b']);
     expect(renameArgs('a', 'b')).toEqual(['rename', 'a', 'b']);
     expect(distributeArgs('adaptive')).toEqual(['distribute', 'adaptive']);
+    expect(distributeArgs('load')).toEqual(['distribute', 'load']);
     expect(intervalArgs('probe', 0)).toEqual(['probe', 'off']);
     expect(intervalArgs('warmup', 300)).toEqual(['warmup', '300']);
   });

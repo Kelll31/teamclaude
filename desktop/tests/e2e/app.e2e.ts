@@ -32,9 +32,15 @@ function freePort(): Promise<number> {
   });
 }
 
-async function status(): Promise<{ accounts: Array<{ name: string; disabled: boolean }>; switchThreshold: number }> {
+interface Status {
+  accounts: Array<{ name: string; disabled: boolean }>;
+  switchThreshold: number;
+  sessions: { mode: string };
+}
+
+async function status(): Promise<Status> {
   const res = await fetch(`http://127.0.0.1:${port}/teamclaude/status`);
-  return res.json() as Promise<{ accounts: Array<{ name: string; disabled: boolean }>; switchThreshold: number }>;
+  return res.json() as Promise<Status>;
 }
 
 /** Polls the backend until `check` holds; the UI acts through it, so this is the real outcome. */
@@ -112,6 +118,14 @@ describe('TeamClaude Desktop', () => {
     await field.fill('80');
     await field.locator('xpath=ancestor::form[1]').getByRole('button', { name: 'Apply', exact: true }).click();
     await eventually(status, v => Math.abs(v.switchThreshold - 0.8) < 1e-9);
+  });
+
+  it('switches session distribution to the load mode', async () => {
+    await nav('Routing');
+    await page.getByRole('button', { name: 'By load', exact: true }).click();
+    await eventually(status, v => v.sessions.mode === 'load');
+    // The column the mode places by is shown, one count per account.
+    await page.getByRole('columnheader', { name: 'Requests, 10 min' }).waitFor();
   });
 
   it('keeps the activity timeline across a window reload', async () => {

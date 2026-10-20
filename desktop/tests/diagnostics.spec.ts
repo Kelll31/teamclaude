@@ -37,6 +37,12 @@ describe('diagnostic report', () => {
     expect(report).toContain('refresh failed for [email]');
   });
 
+  it('says a window the plan does not meter is not metered, not unknown', () => {
+    const raw = rawStatus({ accounts: [rawAccount({ quota: { unified5h: 0.3, weeklyWindowStated: false }, recentRequests: 4 })] });
+    const report = buildDiagnosticReport(system, state(raw), [], new Date(0));
+    expect(report).toContain('5h=30%, weekly=not metered, recent=4');
+  });
+
   it('replaces the longer of two overlapping names whole', () => {
     expect(anonymizeAccounts('a work-2 b work', ['work', 'work-2'])).toBe('a #2 b #1');
   });

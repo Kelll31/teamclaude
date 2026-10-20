@@ -78,6 +78,7 @@ function normalizeAccount(raw: unknown, index: number, current: Set<string>): Ac
     fiveHour: fiveHour.utilization === null ? backendWindow(quota, 'fiveHour') ?? fiveHour : fiveHour,
     sessionWindowStated: typeof quota.sessionWindowStated === 'boolean' ? quota.sessionWindowStated : null,
     weekly: weekly.utilization === null ? backendWindow(quota, 'weekly') ?? weekly : weekly,
+    weeklyWindowStated: typeof quota.weeklyWindowStated === 'boolean' ? quota.weeklyWindowStated : null,
     modelWindows,
     onExtraUsage: bool(a.onExtraUsage),
     allowExtraUsage: bool(a.allowExtraUsage),
@@ -85,6 +86,7 @@ function normalizeAccount(raw: unknown, index: number, current: Set<string>): Ac
     pausedUntil: str(a.pausedUntil),
     credentialRejectedUntil: str(a.credentialRejectedUntil),
     totalRequests: num(obj(a.usage).totalRequests),
+    recentRequests: num(a.recentRequests),
   };
 }
 

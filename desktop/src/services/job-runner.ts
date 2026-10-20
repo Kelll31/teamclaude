@@ -8,7 +8,7 @@
 import { EventEmitter } from 'node:events';
 import type { Readable, Writable } from 'node:stream';
 import { translator, type Translate } from '../shared/i18n';
-import type { JobView } from '../shared/types';
+import type { DistributionMode, JobView } from '../shared/types';
 import { describeError, sanitizeText } from './sanitize';
 
 export interface CliChild {
@@ -45,7 +45,7 @@ export function renameArgs(account: string, newName: string): string[] {
   return ['rename', account, newName];
 }
 
-export function distributeArgs(mode: 'on' | 'off' | 'adaptive'): string[] {
+export function distributeArgs(mode: DistributionMode): string[] {
   return ['distribute', mode];
 }
 

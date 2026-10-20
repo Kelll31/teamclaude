@@ -44,6 +44,8 @@ describe('validateCall', () => {
     expect(validateCall('accounts.login', { provider: 'claude' }).ok).toBe(true);
     expect(validateCall('accounts.login', { provider: 'gemini' }).ok).toBe(false);
     expect(validateCall('routing.setDistribution', { mode: 'adaptive' }).ok).toBe(true);
+    expect(validateCall('routing.setDistribution', { mode: 'load' }).ok).toBe(true);
+    expect(validateCall('routing.setDistribution', { mode: 'even' }).ok).toBe(false);
     expect(validateCall('routing.setDistribution', { mode: 'random' }).ok).toBe(false);
     expect(validateCall('system.openExternal', { target: 'repository' }).ok).toBe(true);
     expect(validateCall('system.openExternal', { target: 'https://evil.example' }).ok).toBe(false);

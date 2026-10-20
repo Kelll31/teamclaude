@@ -1,6 +1,7 @@
 // Display helpers. A missing value is shown as "Unknown" — never estimated.
 
 import type { ActivityEvent } from '../shared/activity';
+import type { AccountView } from '../shared/types';
 import { t, type MessageKey } from './i18n';
 
 export function unknown(): string {
@@ -54,6 +55,19 @@ export function unavailableText(code: string | null): string {
 
 export function phaseText(phase: string): string {
   return t(`phase.${phase}` as MessageKey);
+}
+
+/**
+ * The server's own row rules (showSessionRow / showWeeklyRow in
+ * status-renderer.js): a window the plan does not meter gets no row, and a
+ * reading still present is drawn whatever the flag says.
+ */
+export function showSessionRow(a: Pick<AccountView, 'fiveHour' | 'sessionWindowStated'>): boolean {
+  return a.sessionWindowStated !== false || a.fiveHour.utilization !== null;
+}
+
+export function showWeeklyRow(a: Pick<AccountView, 'weekly' | 'weeklyWindowStated'>): boolean {
+  return a.weeklyWindowStated !== false || a.weekly.utilization !== null;
 }
 
 /** The words for a timeline entry, in the current language. */

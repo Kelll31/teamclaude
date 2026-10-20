@@ -65,6 +65,11 @@ export interface AccountView {
    */
   sessionWindowStated: boolean | null;
   weekly: QuotaWindow;
+  /**
+   * The same for the shared weekly window: false = the plan meters none (a
+   * Team seat), null = not reported (also by backends from before it was added).
+   */
+  weeklyWindowStated: boolean | null;
   /** Model-scoped weekly buckets (Sonnet, Fable, …) when the server reports them. */
   modelWindows: NamedQuotaWindow[];
   onExtraUsage: boolean;
@@ -73,7 +78,16 @@ export interface AccountView {
   pausedUntil: string | null;
   credentialRejectedUntil: string | null;
   totalRequests: number | null;
+  /**
+   * Requests forwarded to the account in the last ten minutes, the input of
+   * the `load` distribution mode. null = the backend does not report it,
+   * i.e. it predates that mode.
+   */
+  recentRequests: number | null;
 }
+
+/** The argument of `teamclaude distribute`; `on` is the even mode. */
+export type DistributionMode = 'on' | 'off' | 'adaptive' | 'load';
 
 export interface SessionView {
   id: string;

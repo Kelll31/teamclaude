@@ -6,7 +6,7 @@
 
 import type { History, HistoryDelta } from './activity';
 import type {
-  ActionResult, BackendState, DesktopSettings, IntegrationInfo, JobView, LogLine,
+  ActionResult, BackendState, DesktopSettings, DistributionMode, IntegrationInfo, JobView, LogLine,
   SystemInfo, UpdateCheckResult,
 } from './types';
 
@@ -33,7 +33,7 @@ export interface Methods {
   'accounts.rename': { args: { account: string; newName: string }; result: JobView };
 
   'routing.setThreshold': { args: { percent: number }; result: ActionResult };
-  'routing.setDistribution': { args: { mode: 'on' | 'off' | 'adaptive' }; result: JobView };
+  'routing.setDistribution': { args: { mode: DistributionMode }; result: JobView };
   'routing.setProbe': { args: { seconds: number }; result: JobView };
   'routing.setWarmup': { args: { seconds: number }; result: JobView };
 

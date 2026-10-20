@@ -38,6 +38,21 @@ describe('normalizeStatus', () => {
     expect(stated('yes')).toBeNull();
   });
 
+  it('passes through whether the plan meters a shared weekly window', () => {
+    const stated = (value: unknown) => normalizeStatus(rawStatus({ accounts: [rawAccount({ quota: { weeklyWindowStated: value } })] })).accounts[0]!.weeklyWindowStated;
+    expect(stated(true)).toBe(true);
+    expect(stated(false)).toBe(false);
+    expect(stated(undefined)).toBeNull();
+  });
+
+  it('reads the recent request count the load mode places by, null when not reported', () => {
+    const recent = (value: unknown) => normalizeStatus(rawStatus({ accounts: [rawAccount({ recentRequests: value })] })).accounts[0]!.recentRequests;
+    expect(recent(7)).toBe(7);
+    expect(recent(0)).toBe(0);
+    expect(recent(undefined)).toBeNull();
+    expect(normalizeStatus(rawStatus({ sessions: { active: 0, known: 0, mode: 'load' } })).sessions.distribution).toBe('load');
+  });
+
   it('survives garbage of the wrong type', () => {
     const s = normalizeStatus({ accounts: 'nope', server: [1, 2], sessions: null, routes: {} } as Record<string, unknown>);
     expect(s.accounts).toEqual([]);

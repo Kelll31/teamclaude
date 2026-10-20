@@ -3,7 +3,7 @@
 // guesses a number.
 
 import type { AccountView, QuotaWindow } from '../../shared/types';
-import { ago, pct, until } from '../format';
+import { ago, pct, showSessionRow, showWeeklyRow, until } from '../format';
 import { t } from '../i18n';
 import { cx } from './ui';
 
@@ -59,8 +59,8 @@ export function QuotaBar({ label, window, now, threshold, emptyHint }: {
  * account may be in use outside the proxy.
  */
 export function FiveHourBar({ account, now, threshold }: { account: AccountView; now: number; threshold: number | null }) {
+  if (!showSessionRow(account)) return null;
   const empty = account.fiveHour.utilization === null;
-  if (empty && account.sessionWindowStated === false) return null;
   return (
     <QuotaBar
       label={t('quota.fiveHour')}
@@ -68,6 +68,26 @@ export function FiveHourBar({ account, now, threshold }: { account: AccountView;
       now={now}
       threshold={threshold}
       emptyHint={empty && account.sessionWindowStated === true ? t('quota.windowEnded') : undefined}
+    />
+  );
+}
+
+/**
+ * The shared weekly bar, by the server's showWeeklyRow rule: a plan with no
+ * shared weekly window (a Team seat) gets no row, a reading still present is
+ * drawn whatever the flag says, and the reading the server clears at a weekly
+ * reset reads as an ended window, not as 0%.
+ */
+export function WeeklyBar({ account, now, threshold }: { account: AccountView; now: number; threshold: number | null }) {
+  if (!showWeeklyRow(account)) return null;
+  const empty = account.weekly.utilization === null;
+  return (
+    <QuotaBar
+      label={t('quota.weekly')}
+      window={account.weekly}
+      now={now}
+      threshold={threshold}
+      emptyHint={empty && account.weeklyWindowStated === true ? t('quota.windowEnded') : undefined}
     />
   );
 }

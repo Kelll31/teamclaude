@@ -50,14 +50,16 @@ stop a proxy it did not start.
 | Accounts | Accounts grouped by provider: type, token status (never the token), availability and why not, quota, next reset, the last 12 hours of 5-hour (or weekly) use as recorded while the app ran, priority, rotation toggle. Add, import, rename, remove (with confirmation), prefer, sign in again. |
 | Sessions | Session counts, and the individual sessions when the proxy runs with `proxy.sessionDetail`, filterable by account and client. |
 | Activity | Changes the app observed between status readings (switches, accounts becoming unavailable) and routing lines from the proxy's log, without request content. |
-| Routing | Distribution mode, switch threshold, priorities, model routes, background probe and warm-up. Settings that can spend extra requests are off by default and carry a warning. |
+| Routing | Distribution mode (off, even, adaptive, or by load — offered when the running TeamClaude has that mode), the requests each account served in the last ten minutes, switch threshold, priorities, model routes, background probe and warm-up. Settings that can spend extra requests are off by default and carry a warning. |
 | Integrations | Detects `claude` and `codex` on PATH, checks the proxy, gives copyable environment lines for bash/zsh, PowerShell and cmd, the VS Code snippet, and can open a terminal with `ANTHROPIC_BASE_URL` set. |
 | Settings | Theme (dark, light, system), language (English, Русский, 日本語), tray and startup behaviour, notifications, the config directory, diagnostics. |
 | Logs | The managed proxy's stdout/stderr and the app's own notes, sanitized; filter, search, auto-scroll, clear, the backend crash log, and **Export diagnostics**. |
 | About | Desktop, bundled backend and running backend versions, links, manual update check. |
 
 Quota numbers come only from what the backend has seen. When there is no
-reading yet the app says **Unknown**, never a guess. A per-minute rate limit
+reading yet the app says **Unknown**, never a guess. A window the plan does
+not meter (no 5-hour window, or no shared weekly window on a Team seat) has
+no bar, as in `teamclaude status`. A per-minute rate limit
 is shown as such and is not counted as an exhausted quota. The quota history
 is one reading a minute kept in memory while the app runs; a stretch with no
 reading is left out, not filled in.

@@ -3,7 +3,7 @@ import type { AccountView, BackendState } from '../../shared/types';
 import { call } from '../api';
 import { useNow } from '../clock';
 import { phaseTone } from '../components/BackendBanner';
-import { FiveHourBar, QuotaBar } from '../components/QuotaBar';
+import { FiveHourBar, WeeklyBar } from '../components/QuotaBar';
 import { Sparkline } from '../components/Sparkline';
 import { ActionButton, Badge, Button, Card, CopyButton, Dot, PageHeader, Stat } from '../components/ui';
 import { ago, duration, phaseText, unavailableText, unknown, until } from '../format';
@@ -76,7 +76,7 @@ function AccountQuotaRow({ account, now, threshold }: { account: AccountView; no
         <div className="truncate pl-3.5 text-[11px] text-muted">{account.provider} · {unavailableText(account.unavailable)}</div>
       </div>
       <FiveHourBar account={account} now={now} threshold={threshold} />
-      <QuotaBar label={t('quota.weekly')} window={account.weekly} now={now} threshold={threshold} />
+      <WeeklyBar account={account} now={now} threshold={threshold} />
     </div>
   );
 }

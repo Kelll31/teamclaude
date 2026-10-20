@@ -11,7 +11,12 @@ function pct(value: number | null): string {
   return value === null ? 'unknown' : `${Math.round(value * 100)}%`;
 }
 
-const EMAIL = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g;
+/** A window the plan does not meter is not an unknown reading. */
+function windowText(utilization: number | null, stated: boolean | null): string {
+  return utilization === null && stated === false ? 'not metered' : pct(utilization);
+}
+
+const EMAIL =/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g;
 
 const escapeRegExp = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
@@ -54,7 +59,7 @@ export function buildDiagnosticReport(system: SystemInfo, state: BackendState, l
     lines.push('## Accounts');
     // Account names can be email addresses; the report numbers them instead.
     status.accounts.forEach((a, i) => {
-      lines.push(`- #${i + 1} ${a.provider}/${a.type}: status=${a.status}, unavailable=${a.unavailable ?? 'no'}, disabled=${a.disabled}, 5h=${pct(a.fiveHour.utilization)}, weekly=${pct(a.weekly.utilization)}${a.error ? `, error=${a.error.code}` : ''}`);
+      lines.push(`- #${i + 1} ${a.provider}/${a.type}: status=${a.status}, unavailable=${a.unavailable ?? 'no'}, disabled=${a.disabled}, 5h=${windowText(a.fiveHour.utilization, a.sessionWindowStated)}, weekly=${windowText(a.weekly.utilization, a.weeklyWindowStated)}, recent=${a.recentRequests ?? 'unknown'}${a.error ? `, error=${a.error.code}` : ''}`);
     });
     lines.push('');
     lines.push(`Sessions: ${status.sessions.active} active / ${status.sessions.known} known; distribution: ${status.sessions.distribution ?? 'unknown'}`);

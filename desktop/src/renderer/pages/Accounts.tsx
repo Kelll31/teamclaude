@@ -5,7 +5,7 @@ import type { AccountView } from '../../shared/types';
 import { call } from '../api';
 import { useNow } from '../clock';
 import { JobPanel } from '../components/JobPanel';
-import { FiveHourBar, QuotaBar } from '../components/QuotaBar';
+import { FiveHourBar, QuotaBar, WeeklyBar } from '../components/QuotaBar';
 import { Sparkline } from '../components/Sparkline';
 import {
   ActionButton, Badge, Button, Card, ConfirmDialog, controlClass, EmptyState, Field, inputClass, PageHeader, Toggle, type Tone,
@@ -94,7 +94,7 @@ function AccountCard({ account, threshold, readOnly }: { account: AccountView; t
 
       <div className="mt-3 grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-4">
         <FiveHourBar account={account} now={now} threshold={threshold} />
-        <QuotaBar label={t('quota.weekly')} window={account.weekly} now={now} threshold={threshold} />
+        <WeeklyBar account={account} now={now} threshold={threshold} />
         {account.modelWindows.map(w => <QuotaBar key={w.label} label={t('quota.modelWeekly', { model: w.label })} window={w} now={now} threshold={threshold} />)}
       </div>
       <QuotaTrend account={account} />
