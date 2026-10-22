@@ -1,7 +1,7 @@
 // Display helpers. A missing value is shown as "Unknown" — never estimated.
 
 import type { ActivityEvent } from '../shared/activity';
-import type { AccountView } from '../shared/types';
+import type { AccountView, QuotaWindow } from '../shared/types';
 import { t, type MessageKey } from './i18n';
 
 export function unknown(): string {
@@ -34,6 +34,23 @@ export function ago(at: number | null | undefined, now: number): string {
   const ms = now - at;
   if (ms < 5000) return t('time.justNow');
   return t('time.ago', { t: duration(ms) });
+}
+
+/**
+ * How old a quota reading may be before it is shown as stale: the server's own
+ * STATUS_STALE_MS default (account-manager.js). With the probe off nothing
+ * revalidates an idle account, and outside spend is invisible to the proxy.
+ */
+export const STALE_READING_MS = 30 * 60_000;
+
+/**
+ * A reading the window has not reset past yet, but too old to stand for now.
+ * Usage only grows within a window, so it is a floor, not the current value.
+ */
+export function isStaleReading(w: QuotaWindow, now: number): boolean {
+  if (w.utilization === null || w.seenAt === null) return false;
+  if (w.resetAt !== null && w.resetAt <= now) return false;
+  return now - w.seenAt >= STALE_READING_MS;
 }
 
 export function isoUntil(iso: string | null, now: number): string | null {
