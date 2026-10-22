@@ -1,9 +1,10 @@
 // Records docs/assets/desktop-demo.gif from the built app (`npm run build`
-// first). The window is never shown: it starts minimized and frames come from
-// the renderer over CDP. Placeholder API-key accounts, an upstream on port 1
-// that never listens and quota readings seeded through the backend's own state
-// file, so nothing leaves the machine and no real account appears. Notifications
-// and updates are off. Needs ffmpeg on PATH.
+// first). The window never appears on a monitor: it starts minimized, is then
+// shown off every screen without focus, and frames come from the renderer over
+// CDP. Placeholder API-key accounts, an upstream on port 1 that never listens
+// and quota readings seeded through the backend's own state file, so nothing
+// leaves the machine and no real account appears. Notifications are off.
+// Needs ffmpeg on PATH.
 //
 //   node scripts/capture-demo.mjs [out.gif]
 
@@ -89,9 +90,9 @@ async function main() {
 
     const userData = join(dir, 'user-data');
     mkdirSync(userData);
-    const off = { proxyCrashed: false, authExpired: false, allUnavailable: false, quotaExhausted: false, backendRecovered: false, updateAvailable: false, appUpdateReady: false };
+    const off = { proxyCrashed: false, authExpired: false, allUnavailable: false, quotaExhausted: false, backendRecovered: false, updateAvailable: false };
     writeFileSync(join(userData, 'settings.json'), JSON.stringify({
-      language: 'en', theme: 'dark', startMinimized: true, startProxyOnLaunch: true, autoUpdate: false, notifications: off,
+      language: 'en', theme: 'dark', startMinimized: true, startProxyOnLaunch: true, notifications: off,
     }));
 
     // An occluded window stops painting; this one sits off every monitor.
