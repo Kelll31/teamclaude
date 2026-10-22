@@ -27,6 +27,12 @@ teamclaude run       # in another terminal: Claude Code through the proxy
 
 Already logged into Claude Code? `teamclaude import` takes its credentials instead of a fresh OAuth round. A container image is on GHCR — see [Running in a container](docs/usage.md#running-in-a-container). API keys, and one email holding accounts in several orgs, are covered in [docs/accounts.md](docs/accounts.md).
 
+## Desktop app
+
+**TeamClaude Desktop** is a control panel for the same local proxy on Windows and Linux: start or attach to it, watch every account's 5-hour and weekly quota, switch, prefer and reorder accounts, sign in, set routing, and keep it all in the tray. It bundles the backend, so Node.js is not needed, and it holds no credentials. Unofficial, unsigned builds that update themselves are on the [Kelll31/teamclaude releases](https://github.com/Kelll31/teamclaude/releases); see [docs/desktop.md](docs/desktop.md).
+
+![TeamClaude Desktop: overview, accounts with quota bars, and routing](docs/assets/desktop-demo.gif)
+
 ## What it does
 
 - Rotates to the next account when the 5h session or 7d weekly bucket reaches the threshold (98% by default), preferring the account whose weekly quota resets soonest.
@@ -82,6 +88,7 @@ Step-by-step lifecycle: [docs/routing.md](docs/routing.md#request-lifecycle).
 | [VS Code](docs/vscode.md) | The Claude Code extension for VS Code through the proxy: settings, a check, updates |
 | [Routing](docs/routing.md) | Rotation, the two kinds of 429, storm control, model routes, session spreading, pinning, prompt cache |
 | [Quota](docs/quota.md) | Quota probe, keep-warm, holding on exhaustion |
+| [Desktop](docs/desktop.md) | The Windows/Linux desktop control panel: install, pages, tray, updates |
 | [Configuration](docs/configuration.md) | Config format, every field, environment variables, network tuning |
 | [Proxy modes](docs/proxy-modes.md) | MITM forward proxy, upstream proxy, per-account routing, sx.org residential egress |
 | [Compliance](docs/compliance.md) | Who the project is for, and terms of service notes for each provider |
