@@ -88,6 +88,11 @@ export const ja: Record<MessageKey, string> = {
   'quota.title': 'クォータ',
   'quota.noReading': 'サーバーからのデータはまだありません',
   'quota.windowEnded': 'ウィンドウ終了 — 次のリクエストで新しく始まります',
+  'quota.atLeast': '≥ {pct}',
+  'quota.stale': '古いデータ',
+  'quota.staleTitle': '取得: {when}。それ以降の使用量（このプロキシを経由しない使用を含む）は反映されていないため、実際の値はこれ以上です。「クォータを更新」で最新の値を取得できます。',
+  'quota.refresh': 'クォータを更新',
+  'quota.refreshTitle': 'すべてのアカウントのクォータを今すぐプロバイダーから取得します。クォータは消費しません。',
   'spark.collecting': 'データを収集しています…',
 
   'reason.available': '利用可能',

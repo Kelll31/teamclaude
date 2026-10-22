@@ -3,7 +3,7 @@ import type { AccountView, BackendState } from '../../shared/types';
 import { call } from '../api';
 import { useNow } from '../clock';
 import { phaseTone } from '../components/BackendBanner';
-import { FiveHourBar, WeeklyBar } from '../components/QuotaBar';
+import { FiveHourBar, RefreshQuotasButton, WeeklyBar } from '../components/QuotaBar';
 import { Sparkline } from '../components/Sparkline';
 import { ActionButton, Badge, Button, Card, CopyButton, Dot, PageHeader, Stat } from '../components/ui';
 import { ago, duration, phaseText, unavailableText, unknown, until } from '../format';
@@ -153,7 +153,15 @@ export function Overview() {
       )}
 
       {status && accounts.length > 0 && (
-        <Card title={t('quota.title')} actions={<Button variant="ghost" onClick={() => setPage('accounts')}>{t('overview.allDetails')}</Button>}>
+        <Card
+          title={t('quota.title')}
+          actions={(
+            <>
+              <RefreshQuotasButton />
+              <Button variant="ghost" onClick={() => setPage('accounts')}>{t('overview.allDetails')}</Button>
+            </>
+          )}
+        >
           <div className="divide-y divide-border">
             {accounts.map(a => <AccountQuotaRow key={`${a.provider}/${a.name}`} account={a} now={now} threshold={status.switchThreshold} />)}
           </div>

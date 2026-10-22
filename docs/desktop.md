@@ -64,6 +64,15 @@ is shown as such and is not counted as an exhausted quota. The quota history
 is one reading a minute kept in memory while the app runs; a stretch with no
 reading is left out, not filled in.
 
+With the quota probe off (the default) the backend only learns quota from
+requests it serves, so an idle account keeps its last reading, and use outside
+the proxy never shows. A reading 30 minutes old or more (the server's own
+staleness window) whose window has not reset is shown as the floor it is, as
+**≥ 40%** on a dimmed bar with its age marked **old reading**. **Refresh
+quotas** on Overview and Accounts reads every account from the usage endpoint
+once (the TUI's `p`); it spends no quota and runs only when pressed. To keep
+idle accounts fresh, turn on the background probe under Routing.
+
 Keyboard: **Ctrl+1** … **Ctrl+9** open the pages in sidebar order; **F5** or
 **Ctrl+R** reads the proxy status again.
 

@@ -92,6 +92,11 @@ export const en = {
   'quota.title': 'Quota',
   'quota.noReading': 'No reading from the server yet',
   'quota.windowEnded': 'Window ended — the next request starts a new one',
+  'quota.atLeast': '≥ {pct}',
+  'quota.stale': 'old reading',
+  'quota.staleTitle': 'Read {when}. Use since then, including use outside this proxy, is not counted, so the real figure can only be higher. Refresh quotas to read it now.',
+  'quota.refresh': 'Refresh quotas',
+  'quota.refreshTitle': 'Read the quota of every account from the provider now. Spends no quota.',
   'spark.collecting': 'Collecting samples…',
 
   // ── unavailable reasons ──

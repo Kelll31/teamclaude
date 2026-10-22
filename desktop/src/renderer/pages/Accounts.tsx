@@ -5,7 +5,7 @@ import type { AccountView } from '../../shared/types';
 import { call } from '../api';
 import { useNow } from '../clock';
 import { JobPanel } from '../components/JobPanel';
-import { FiveHourBar, QuotaBar, WeeklyBar } from '../components/QuotaBar';
+import { FiveHourBar, QuotaBar, RefreshQuotasButton, WeeklyBar } from '../components/QuotaBar';
 import { Sparkline } from '../components/Sparkline';
 import {
   ActionButton, Badge, Button, Card, ConfirmDialog, controlClass, EmptyState, Field, inputClass, PageHeader, Toggle, type Tone,
@@ -218,6 +218,7 @@ export function Accounts() {
           <>
             <input className={`${controlClass} w-56`} placeholder={t('accounts.filter')} aria-label={t('accounts.filter')} value={filter} onChange={e => setFilter(e.target.value)} />
             <ActionButton icon={<RefreshCw className="size-3.5" aria-hidden />} disabled={backend?.phase !== 'running'} onAction={() => run(() => call('backend.reload'))}>{t('accounts.reload')}</ActionButton>
+            <RefreshQuotasButton disabled={backend?.phase !== 'running'} />
           </>
         )}
       />

@@ -1,11 +1,15 @@
 // One quota window: utilization bar, reset countdown, age of the reading.
 // With no reading it says "Unknown" and draws an empty bar — it never
-// guesses a number.
+// guesses a number. A reading too old to stand for now is drawn as the floor
+// it is ("≥ 40%"), dimmed, with its age in the warning colour.
 
+import { RefreshCw } from 'lucide-react';
 import type { AccountView, QuotaWindow } from '../../shared/types';
-import { ago, pct, showSessionRow, showWeeklyRow, until } from '../format';
+import { call } from '../api';
+import { ago, isStaleReading, pct, showSessionRow, showWeeklyRow, until } from '../format';
 import { t } from '../i18n';
-import { cx } from './ui';
+import { useStore } from '../store';
+import { ActionButton, cx } from './ui';
 
 export function QuotaBar({ label, window, now, threshold, emptyHint }: {
   label: string;
@@ -18,6 +22,9 @@ export function QuotaBar({ label, window, now, threshold, emptyHint }: {
   const u = window.utilization;
   const known = u !== null;
   const width = known ? Math.max(0, Math.min(1, u)) * 100 : 0;
+  const stale = isStaleReading(window, now);
+  const shown = stale ? t('quota.atLeast', { pct: pct(u) }) : pct(u);
+  const staleTitle = stale ? t('quota.staleTitle', { when: ago(window.seenAt, now) }) : undefined;
   const tone = !known ? 'bg-muted/30' : u >= 1 ? 'bg-bad' : threshold !== null && u >= threshold ? 'bg-warn' : 'bg-ok';
   // Two "Unknown"s under an "Unknown" say nothing the bar does not.
   const hint = known ? null : emptyHint ?? (window.resetAt === null && window.seenAt === null ? t('quota.noReading') : null);
@@ -25,7 +32,7 @@ export function QuotaBar({ label, window, now, threshold, emptyHint }: {
     <div className="min-w-0">
       <div className="mb-1 flex items-baseline justify-between gap-2 text-[11px]">
         <span className="truncate font-medium text-muted">{label}</span>
-        <span className={cx('tabular-nums', known ? 'text-fg' : 'text-muted')}>{pct(u)}</span>
+        <span className={cx('tabular-nums', known && !stale ? 'text-fg' : 'text-muted')} title={staleTitle}>{shown}</span>
       </div>
       <div
         className="h-1.5 overflow-hidden rounded-full bg-panel-2"
@@ -34,16 +41,18 @@ export function QuotaBar({ label, window, now, threshold, emptyHint }: {
         aria-valuemin={0}
         aria-valuemax={100}
         aria-valuenow={known ? Math.round(width) : undefined}
-        aria-valuetext={known ? `${Math.round(width)}%` : t('common.unknown')}
+        aria-valuetext={known ? shown : t('common.unknown')}
       >
-        <div className={cx('h-full rounded-full transition-[width] duration-500', tone)} style={{ width: `${width}%` }} />
+        <div className={cx('h-full rounded-full transition-[width] duration-500', tone, stale && 'opacity-40')} style={{ width: `${width}%` }} />
       </div>
       {hint !== null ? (
         <div className="mt-1 truncate text-[11px] text-muted" title={hint}>{hint}</div>
       ) : (
         <div className="mt-1 flex justify-between gap-2 text-[11px] text-muted">
           <span className="truncate">{t('quota.resets', { when: until(window.resetAt, now) })}</span>
-          <span className="truncate" title={t('quota.seenTitle')}>{t('quota.seen', { when: ago(window.seenAt, now) })}</span>
+          {stale
+            ? <span className="truncate text-warn" title={staleTitle}>{t('quota.stale')} · {t('quota.seen', { when: ago(window.seenAt, now) })}</span>
+            : <span className="truncate" title={t('quota.seenTitle')}>{t('quota.seen', { when: ago(window.seenAt, now) })}</span>}
         </div>
       )}
     </div>
@@ -89,5 +98,29 @@ export function WeeklyBar({ account, now, threshold }: { account: AccountView; n
       threshold={threshold}
       emptyHint={empty && account.weeklyWindowStated === true ? t('quota.windowEnded') : undefined}
     />
+  );
+}
+
+/**
+ * One zero-spend read of every account's quota from the usage endpoint
+ * (POST /teamclaude/probe, the TUI's `p`), then a status read so the bars
+ * show it at once. Only on a press: nothing here calls out on its own.
+ */
+export function RefreshQuotasButton({ disabled }: { disabled?: boolean }) {
+  const { run } = useStore();
+  return (
+    <ActionButton
+      variant="ghost"
+      disabled={disabled}
+      title={t('quota.refreshTitle')}
+      icon={<RefreshCw className="size-3.5" aria-hidden />}
+      onAction={() => run(async () => {
+        const result = await call('backend.probe');
+        await call('backend.refresh');
+        return result;
+      })}
+    >
+      {t('quota.refresh')}
+    </ActionButton>
   );
 }
